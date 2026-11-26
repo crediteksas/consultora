@@ -1,0 +1,17 @@
+**APROBADO** for the counter-reset delta. I found no code blocker. I only read files and changed nothing.
+
+**Every place the context is cleared now also resets the counters** in `candidate/operational/node/engine.mjs`:
+- **`:16`:** the `EXPIRED_GREETING_RELEASED` path, when it's already released.
+- **`:32`:** the `EXPIRED_GREETING_RELEASED` path, after the release is confirmed.
+- **`:75`:** the normal save/close path.
+- **`:79`:** both the `BROWSER_SEND_NOT_CONFIRMED` cleanup and the observed/unavailable release.
+- **`:82`:** in `tick()`, right after a new job is claimed and before `persist('reserved')`.
+
+At each spot, `currentRecoveryTries`, `restartPending`, `restartTries` and `recoveryAttempt` are all cleared. This matches the earlier fix (`claude-closure.txt:39`) and also adds the expired-recovery counters, as you described.
+
+**This can't make anything less safe:**
+- The counters are cleared only after the context is null, or just after a new claim. So no budget for a held job can be cleared while that job is still running.
+- The two success paths (`:61` and the current-lease path) still go through the reset at `:75`.
+- A crash between the claim and `persist('reserved')` still ends in `RESERVATION_UNCERTAIN_REQUIRES_REVIEW`, because `reservationPending` is still saved as true.
+
+**Test:** the new test at `native-tests.mjs:33` starts with all counters at their limits and a pending marker. It then runs the observed/unavailable release and checks that every counter is 0 and the marker is null in the last saved state. `native-tests.log` shows 13/13 passing, 0 failing. That's the 12 earlier tests (you said 11) plus the new one.

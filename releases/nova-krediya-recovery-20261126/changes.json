@@ -1,0 +1,327 @@
+[
+  {
+    "path": "nova/index.mjs",
+    "before": "b336898f6febbd879b205df69d938f604527e9e42a697759829ee3023f500467",
+    "after": "44b73f6023deb4885faf7e60f87a7207b6f0e2778964d44da3cefbe2ec995795",
+    "edits": [
+      {
+        "start": 3047971,
+        "end": 3047971,
+        "old": "",
+        "new": "   else if(Number.isFinite(Date.parse(c?.created_at||c?.updated_at))&&now-Date.parse(c.created_at||c.updated_at)>120000){status='technical';label='Verificación automática detenida';detail='No se ha podido completar esta consulta automática. El equipo NOVA debe restablecer el procesamiento; la tienda no debe volver a registrar al cliente.';}\n"
+      },
+      {
+        "start": 3058425,
+        "end": 3058425,
+        "old": "",
+        "new": " const technical=!closed&&(workflow.checks||[]).some(p=>p.status==='technical');\n if(technical)pending.push({kind:'validation',label:'Validación técnica pendiente',owner:'Creditek',action:null,detail:'No se ha podido completar la verificación automática de NOVA. El equipo de Creditek debe restablecer el procesamiento. Conservamos tu solicitud; no vuelvas a registrarla.'});\n"
+      },
+      {
+        "start": 3059996,
+        "end": 3059996,
+        "old": "",
+        "new": " if(technical)Object.assign(action,{owner:'Creditek',title:'Validación técnica pendiente',detail:'La validación está detenida por un problema técnico de NOVA. No hay que volver a registrar al cliente. Revisa los pendientes específicos y su responsable abajo.'});\n"
+      },
+      {
+        "start": 3060207,
+        "end": 3060376,
+        "old": " if(waiting){action.detail=waiting.title+'. '+waiting.detail;if(!internalReview&&!pending.some(p=>p.owner==='Tienda'||p.owner==='Creditek'))action.owner='Referencias';}\n",
+        "new": " if(waiting){action.detail=(technical?action.detail+' ':'')+waiting.title+'. '+waiting.detail;if(!internalReview&&!pending.some(p=>p.owner==='Tienda'||p.owner==='Creditek'))action.owner='Referencias';}\n"
+      },
+      {
+        "start": 3061795,
+        "end": 3062258,
+        "old": "  return { workflow:internal?storeWorkflow(decision,at):commercialStoreWorkflow(storeWorkflow(decision,at),decision.state,decision.summary?.references,decision.decision?.platformVerification), status: decision.state === \"authorized\" ? \"Autorizado para tramitar\" : decision.state === \"rejected\" ? \"Rechazado\" : decision.state === \"review\" ? \"En revisi\\xF3n de Andrea\" : decision.state === \"waiting\" ? \"Esperando respuesta de referencias\" : \"Completar registro\" };\n",
+        "new": "  const workflow=internal?storeWorkflow(decision,at):commercialStoreWorkflow(storeWorkflow(decision,at),decision.state,decision.summary?.references,decision.decision?.platformVerification);\n  return {workflow,status:decision.state==='authorized'?'Autorizado para tramitar':decision.state==='rejected'?'Rechazado':workflow.nextAction?.title||'Validación pendiente'};\n"
+      },
+      {
+        "start": 3071311,
+        "end": 3071613,
+        "old": " return {window:w,path:'nova_retail_cases?select=source_id,store_code,state,revision,decision,summary,valid_until,updated_at,source:kora_nova_sources!nova_retail_cases_source_id_fkey!inner(submitted_at)'+scope+privacy+date+'&order=source(submitted_at).desc,source_id.desc&limit=101&offset='+w.offset};\n",
+        "new": " return {window:w,path:'nova_retail_cases?select=source_id,store_code,state,revision,decision,summary,valid_until,updated_at,created_at,source:kora_nova_sources!nova_retail_cases_source_id_fkey!inner(submitted_at)'+scope+privacy+date+'&order=source(submitted_at).desc,source_id.desc&limit=101&offset='+w.offset};\n"
+      },
+      {
+        "start": 3183938,
+        "end": 3184338,
+        "old": "  if(!['nova_krediya_browser_claim','nova_read_krediya_job','nova_finish_krediya_job','nova_next_krediya_browser_job','nova_release_krediya_browser_channel','nova_read_krediya_browser_job','nova_requeue_unsent_krediya_browser_job','nova_release_expired_krediya_greeting'].includes(name)||env.SUPABASE_URL?.replace(/\\/$/,'')!==RPC_ORIGIN||!env.SUPABASE_SERVICE_ROLE_KEY)throw Error('NOT_CONFIGURED');\n",
+        "new": "  if(!['nova_krediya_browser_claim','nova_read_krediya_job','nova_finish_krediya_job','nova_next_krediya_browser_job','nova_release_krediya_browser_channel','nova_read_krediya_browser_job','nova_requeue_unsent_krediya_browser_job','nova_release_expired_krediya_greeting','nova_restart_expired_krediya_job'].includes(name)||env.SUPABASE_URL?.replace(/\\/$/,'')!==RPC_ORIGIN||!env.SUPABASE_SERVICE_ROLE_KEY)throw Error('NOT_CONFIGURED');\n"
+      },
+      {
+        "start": 3185367,
+        "end": 3185632,
+        "old": " const project=j=>Object.fromEntries(['id','application_id','source_application_id','payload_hash','platform','status','lease_id','completion_lease_id','lease_until','created_at','checked_at','inputs','consent','observation','reason_code'].map(k=>[k,j[k]??null]));\n",
+        "new": " const project=j=>Object.fromEntries(['id','application_id','source_application_id','payload_hash','platform','status','lease_id','completion_lease_id','lease_until','created_at','checked_at','inputs','consent','observation','reason_code','attempts'].map(k=>[k,j[k]??null]));\n"
+      },
+      {
+        "start": 3185677,
+        "end": 3185878,
+        "old": "  const path=new URL(request.url).pathname,m=/^\\/internal\\/krediya-browser\\/(status|peek|claim-next|claim|read|check|name|finish|release|recover-unsent|recover-expired)$/.exec(path);if(!m)return null;\n",
+        "new": "  const path=new URL(request.url).pathname,m=/^\\/internal\\/krediya-browser\\/(status|peek|claim-next|claim|read|check|name|finish|release|recover-unsent|recover-expired|restart-expired)$/.exec(path);if(!m)return null;\n"
+      },
+      {
+        "start": 3189593,
+        "end": 3189593,
+        "old": "",
+        "new": "   if(action==='restart-expired'){\n    if(!operating||!hours(now())||!hours(now()+300000)||Object.keys(body).length!==2||job.platform!=='KREDIYA'||job.status!=='running'||job.lease_id!==body.lease_id||job.observation!==null||job.checked_at!==null||job.completion_lease_id!==null||!validConsent(job.consent,now())||!UUID.test(job.application_id||'')||!UUID.test(job.source_application_id||'')||!/^[a-f0-9]{64}$/.test(job.payload_hash||'')||!/^\\d{6,12}$/.test(job.inputs?.document||'')||!/^3\\d{9}$/.test(job.inputs?.phone||'')||!await verifySource(job,env,{now:now()}))return reply({error:'RECOVERY_NOT_ALLOWED'},409);\n    const recovered=await rpc(env,'nova_restart_expired_krediya_job',{p_id:job.id,p_lease_id:body.lease_id});\n    if(!recovered||recovered.id!==job.id||recovered.lease_id!==body.lease_id||recovered.application_id!==job.application_id||recovered.source_application_id!==job.source_application_id||recovered.payload_hash!==job.payload_hash||JSON.stringify(recovered.inputs)!==JSON.stringify(job.inputs)||!current(recovered,now())||!await verifySource(recovered,env,{now:now()}))return reply({error:'RECOVERY_NOT_ALLOWED'},409);\n    return reply({job:project(recovered)});\n   }\n"
+      }
+    ]
+  },
+  {
+    "path": "clientes/index.mjs",
+    "before": "9c875a0b8d9f8b2ef4923ae4b3132b875c742163277ce4856a7ba98614677d2e",
+    "after": "9ce91a9deed4205bb374a621cc4bdd11187af9c4d932ebb6b4ba06264ce56785",
+    "edits": [
+      {
+        "start": 301381,
+        "end": 301381,
+        "old": "",
+        "new": " const hour=new Date(now-5*3600000).getUTCHours(),born=Date.parse(row.created_at||row.updated_at);\n const technical=hour>=8&&hour<20&&Number.isFinite(born)&&now-born>120000&&(Array.isArray(summary.platforms)?summary.platforms:[]).some(p=>p?.platform==='KREDIYA'&&p.status==='blocked'&&p.reason==='YABOT_TRANSPORT_NOT_VERIFIED'&&p.attempts===0);\n if(technical)pending.push({kind:'validation',label:'Validación técnica pendiente',action:'wait',detail:'La validación está detenida por un problema técnico de NOVA. El equipo de Creditek debe restablecer el procesamiento. Conservamos tu solicitud; no vuelvas a registrarla.'});\n"
+      },
+      {
+        "start": 302319,
+        "end": 302786,
+        "old": " return {schema:waiting.schema,state,terminal:false,title:state==='correct'?'Debes completar información':state==='review'?'En revisión':'En proceso',detail:state==='review'?'El equipo NOVA está revisando los puntos pendientes. No necesitas registrar al cliente de nuevo.':pending.length?'Revisa los pendientes indicados. Esta pantalla se actualizará automáticamente.':'Las consultas siguen en proceso. NOVA actualizará el resultado aquí.',pending,checks,updatedAt};\n",
+        "new": " return {schema:waiting.schema,state,terminal:false,title:technical?'Validación técnica pendiente':state==='correct'?'Debes completar información':state==='review'?'En revisión':'En proceso',detail:technical?'La validación está detenida por un problema técnico de NOVA. Revisa los pendientes indicados y su responsable; no vuelvas a registrar al cliente.':state==='review'?'El equipo NOVA está revisando los puntos pendientes. No necesitas registrar al cliente de nuevo.':pending.length?'Revisa los pendientes indicados. Esta pantalla se actualizará automáticamente.':'Las consultas siguen en proceso. NOVA actualizará el resultado aquí.',pending,checks,updatedAt};\n"
+      },
+      {
+        "start": 303003,
+        "end": 303224,
+        "old": " const url=`${KORA2}/rest/v1/nova_retail_cases?source_id=eq.${encodeURIComponent(session.solicitudId)}&cliente_id=eq.${encodeURIComponent(session.clienteId)}&select=state,decision,summary,valid_until,updated_at&limit=2`;\n",
+        "new": " const url=`${KORA2}/rest/v1/nova_retail_cases?source_id=eq.${encodeURIComponent(session.solicitudId)}&cliente_id=eq.${encodeURIComponent(session.clienteId)}&select=state,decision,summary,valid_until,updated_at,created_at&limit=2`;\n"
+      }
+    ]
+  },
+  {
+    "path": "operational/extension/manifest.json",
+    "before": "4b738312426dae93cf574b13202b8c15ca8933b952b0d2e56c482c77ec5ab02a",
+    "after": "45b5bd74eca5b72b3443fd1365531014ac1fe7d2a52cbe17eb42dcb2e6ade1a3",
+    "edits": [
+      {
+        "start": 92,
+        "end": 94,
+        "old": "19",
+        "new": "20"
+      }
+    ]
+  },
+  {
+    "path": "operational/extension/driver.mjs",
+    "before": "ebdb82d3e75b19a6bbb3883e8e9a41855117235daa466ff89b6872cdedcc2cff",
+    "after": "35eabc4ac3b229287c80058856bbdac85620b1ece0e2df57ace78df572bedfd7",
+    "edits": [
+      {
+        "start": 1567,
+        "end": 1567,
+        "old": "",
+        "new": ";await chrome.tabs.update(tabId,{active:true})"
+      },
+      {
+        "start": 5213,
+        "end": 5213,
+        "old": "",
+        "new": "const proof=typeof document==='object'&&document!==null?document:null;document=proof?.document??document;\n "
+      },
+      {
+        "start": 6140,
+        "end": 6140,
+        "old": "",
+        "new": ",created=Date.parse(proof?.requestCreatedAt),documentAt=Date.parse(proof?.documentConfirmedAt)"
+      },
+      {
+        "start": 6141,
+        "end": 6141,
+        "old": "",
+        "new": "\n const exclusiveHeldPrompt=proof?.exclusiveResume===true&&Number.isFinite(created)&&Number.isFinite(documentAt)&&created<=documentAt&&documentAt<=now()&&now()-documentAt<=86400000&&at>=Math.floor(documentAt/60000)*60000&&at<=documentAt+300000;\n const exactNamePrompt=following.length===1&&following[0].text.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[*_]/g,'').replace(/\\s+/g,' ').trim().toLowerCase()==='me brinda por favor su nombre y apellido';\n "
+      },
+      {
+        "start": 6144,
+        "end": 6144,
+        "old": "",
+        "new": "proof?.exclusiveResume===true&&!exactNamePrompt)throw Error('EXCLUSIVE_NAME_PROMPT_REQUIRED');\n if(at===null||"
+      },
+      {
+        "start": 6154,
+        "end": 6154,
+        "old": "",
+        "new": "(proof?.exclusiveResume===true?!exclusiveHeldPrompt:"
+      },
+      {
+        "start": 6172,
+        "end": 6172,
+        "old": "",
+        "new": ")"
+      }
+    ]
+  },
+  {
+    "path": "operational/lib/krediya-browser-20261103/pilot-journal.mjs",
+    "before": "432925b62a9392c615d42fa4222af7cdc14cecc7ca52be0957929de5e168f4e8",
+    "after": "943b3fcae2a4050ab408d562b7875ecff3f6caacfeea24d2b3ee7d6ecddb0ad6",
+    "edits": [
+      {
+        "start": 1015,
+        "end": 1015,
+        "old": "",
+        "new": ",recoveriesForReturn=0,documentConfirmedAt=null"
+      },
+      {
+        "start": 3049,
+        "end": 3049,
+        "old": "",
+        "new": "const base=tail.filter(e=>e.phase!=='reservation_received'),prefix=[['reservation_intent','job','idle'],['send_intent','greeting','idle'],['send_confirmed','greeting','await_prompt'],['send_intent','authorized_document','await_prompt'],['send_confirmed','authorized_document','await_menu']];\n  const nameAttempts=base.length>=7&&base.length<=11&&(base.length-5)%2===0&&JSON.stringify(base.slice(0,5).map(e=>[e.phase,e.kind,e.stage]))===JSON.stringify(prefix)&&base.slice(5).every((e,i)=>e.phase===(i%2===0?'send_intent':'stopped')&&e.kind===(i%2===0?'authorized_name':'operation_error')&&e.stage==='await_menu')&&recoveries.length<=2&&recoveries.every(e=>e.kind==='job'&&e.stage==='await_menu');\n  "
+      },
+      {
+        "start": 3068,
+        "end": 3068,
+        "old": "",
+        "new": "&&!nameAttempts"
+      },
+      {
+        "start": 3183,
+        "end": 3183,
+        "old": "",
+        "new": "nameAttempts||"
+      },
+      {
+        "start": 3226,
+        "end": 3226,
+        "old": "",
+        "new": "documentConfirmedAt=tail.find(e=>e.phase==='send_confirmed'&&e.kind==='authorized_document')?.at||null;recoveriesForReturn=recoveries.length;"
+      },
+      {
+        "start": 3482,
+        "end": 3482,
+        "old": "",
+        "new": ",documentConfirmedAt,recoveryMarkers:resumeGreeting?recoveriesForReturn:0"
+      }
+    ]
+  },
+  {
+    "path": "operational/node/client.mjs",
+    "before": "ca54063a61ded775ce1273ff97f1c4f671bd30615d6143f318418d87f8e2d22e",
+    "after": "a92ffb938e5146bcad2d12bf5998631d6cac054aca080a122d32232e506eb3c6",
+    "edits": [
+      {
+        "start": 1063,
+        "end": 1063,
+        "old": "",
+        "new": "restart:context=>call('restart-expired',{id:context.id,lease_id:context.lease}),"
+      }
+    ]
+  },
+  {
+    "path": "operational/node/engine.mjs",
+    "before": "36914f3015838fb5f36d6090c74417e7012173434c9c7caf7563cb699b713d42",
+    "after": "4b94c066c6a6d807da532555116097163e56d9b5077c7222f365e299bc4ec793",
+    "edits": [
+      {
+        "start": 789,
+        "end": 789,
+        "old": "",
+        "new": "currentRecoveryTries=Number.isSafeInteger(previous.currentRecoveryTries)?previous.currentRecoveryTries:0;\n let "
+      },
+      {
+        "start": 809,
+        "end": 809,
+        "old": "",
+        "new": ",restartPending=previous.restartPending&&typeof previous.restartPending==='object'?previous.restartPending:null,restartTries=Number.isSafeInteger(previous.restartTries)?previous.restartTries:0,recoveryAttempt=Number.isSafeInteger(previous.recoveryAttempt)?previous.recoveryAttempt:0"
+      },
+      {
+        "start": 1217,
+        "end": 1217,
+        "old": "",
+        "new": ",currentRecoveryTries,restartPending,restartTries,recoveryAttempt"
+      },
+      {
+        "start": 1706,
+        "end": 1706,
+        "old": "",
+        "new": ";currentRecoveryTries=0;restartPending=null;restartTries=0;recoveryAttempt=0"
+      },
+      {
+        "start": 2208,
+        "end": 2208,
+        "old": "",
+        "new": "currentRecoveryTries=0;restartPending=null;restartTries=0;recoveryAttempt=0;"
+      },
+      {
+        "start": 2266,
+        "end": 2266,
+        "old": "",
+        "new": ";\n  }finally{await journal.close();}\n }\n const restartableJob=job=>job?.id===context?.id&&job?.platform==='KREDIYA'&&job.status==='running'&&job.lease_id===context?.lease&&job.observation==null&&job.checked_at==null&&job.completion_lease_id==null&&Number.isSafeInteger(job.attempts)&&job.attempts>=1&&job.attempts<=3&&Number.isFinite(Date.parse(job.lease_until));\n const knownFailure=()=>['RECOVERY_NOT_CONFIRMED','BROWSER_COMPOSE_FAILED','BROWSER_SNAPSHOT_FAILED','BROWSER_SEND_CLICK_FAILED','BROWSER_SEND_CONFIRM_FAILED','BROWSER_READ_INCOMING_FAILED','AUTHORIZATION_NOT_CURRENT','SESSION_EXPIRED'].includes(reviewReason);\n const recoveryHours=()=>serviceHours(now())&&serviceHours(now()+300000);\n const pendingRestart=job=>!!restartPending&&!!job&&restartPending.jobId===job.id&&restartPending?.leaseId===job?.lease_id&&Number.isSafeInteger(restartPending.expectedAttempts)&&Number.isFinite(Date.parse(restartPending.expiredLeaseUntil));\n const expiredRestart=job=>restartableJob(job)&&recoveryHours()&&knownFailure()&&Date.parse(job.lease_until)<=now()-60000&&job.attempts<3;\n async function restartExpiredConversation(job){\n  if(!recoveryHours()||!restartableJob(job)||reservationPending||!pendingRestart(job)&&!expiredRestart(job))return fail('EXPIRED_RESTART_NOT_ALLOWED');\n  const journal=await resumeJournal();\n  try{\n   if(journal.recoveryStage!=='document')return fail('RECOVERY_JOURNAL_REQUIRES_REVIEW');\n   if(!expiredRestart(job)&&restartTries>=3)return fail('RECOVERY_RETRY_LIMIT');\n   const visibleProof={document:job.inputs.document,requestCreatedAt:job.created_at,documentConfirmedAt:journal.documentConfirmedAt,exclusiveResume:true};\n   // Read-only check before renewal; no name or document is sent here.\n   await browser('recoverName',visibleProof);\n   if(expiredRestart(job)){restartPending={jobId:job.id,leaseId:job.lease_id,expectedAttempts:job.attempts+1,expiredLeaseUntil:job.lease_until};restartTries=0;}\n   restartTries++;await persist('restart_prepared',{reason:reviewReason});\n   const renewed=(await client.restart(context)).job;\n   if(!restartableJob(renewed)||renewed.attempts!==restartPending.expectedAttempts||renewed.lease_id!==restartPending.leaseId||Date.parse(renewed.lease_until)<=Math.max(now()+10000,Date.parse(restartPending.expiredLeaseUntil)+60000)||JSON.stringify([renewed.application_id,renewed.source_application_id,renewed.payload_hash,renewed.inputs])!==JSON.stringify([job.application_id,job.source_application_id,job.payload_hash,job.inputs]))return fail('EXPIRED_RESTART_NOT_ALLOWED');\n   if(recoveryAttempt!==renewed.attempts){recoveryAttempt=renewed.attempts;restartTries=1;}\n   await persist('restart_reserved',{reason:reviewReason});\n   const recovery=await browser('recoverName',{document:renewed.inputs.document,requestCreatedAt:renewed.created_at,documentConfirmedAt:journal.documentConfirmedAt,exclusiveResume:true});\n   const runner=createPilotRunner({enabled:true,workLine:'573118657153',jobId:renewed.id,leaseId:context.lease,baselineMessageIds:recovery.baselineMessageIds,readJob:()=>client.read(context),verifySource:()=>client.check(context),verifyView:()=>browser('verifyView'),resolveName:()=>client.name(context),sendText:text=>browser('sendText',text),requestMenu:()=>browser('requestMenu'),finishJob:args=>client.finish(args),record:journal.record,now});\n   const result=await continueConversation(runner,await runner.resumeDocument(recovery.document),journal);\n   if(result.confirmed){restartPending=null;restartTries=0;recoveryAttempt=0;paused=false;await persist('idle');return{...result,state:'ready'};}return result"
+      },
+      {
+        "start": 4301,
+        "end": 4301,
+        "old": "",
+        "new": "currentRecoveryTries=0;restartPending=null;restartTries=0;recoveryAttempt=0;"
+      },
+      {
+        "start": 4891,
+        "end": 4891,
+        "old": "",
+        "new": "health.operationalEnabled&&restartableJob(job)&&(recoveryHours()&&pendingRestart(job)&&restartTries<3||expiredRestart(job)))local.automaticRecoveryAllowed=true;if("
+      },
+      {
+        "start": 4947,
+        "end": 4947,
+        "old": "",
+        "new": ",'RECOVERY_NOT_CONFIRMED'"
+      },
+      {
+        "start": 4970,
+        "end": 4970,
+        "old": "",
+        "new": ")&&currentRecoveryTries<3&&!pendingRestart(job"
+      },
+      {
+        "start": 5217,
+        "end": 5217,
+        "old": "",
+        "new": "const persistedJob=context?await client.read(context):null;"
+      },
+      {
+        "start": 5298,
+        "end": 5298,
+        "old": "",
+        "new": ")&&!expiredRestart(persistedJob)&&!pendingRestart(persistedJob"
+      },
+      {
+        "start": 5733,
+        "end": 5733,
+        "old": "",
+        "new": "restartableJob(job)&&(pendingRestart(job)||expiredRestart(job))){busy=true;try{return await restartExpiredConversation(job);}catch(error){return fail(/^BROWSER_/.test(error?.message||'')?error.message:'RECOVERY_NOT_CONFIRMED');}finally{busy=false;}}if("
+      },
+      {
+        "start": 5852,
+        "end": 5852,
+        "old": "",
+        "new": "if(currentRecoveryTries>=3)return fail('CURRENT_RECOVERY_RETRY_LIMIT');"
+      },
+      {
+        "start": 5866,
+        "end": 5866,
+        "old": "",
+        "new": "currentRecoveryTries++;await persist('review',{reason:reviewReason});"
+      },
+      {
+        "start": 7327,
+        "end": 7327,
+        "old": "",
+        "new": "currentRecoveryTries=0;restartPending=null;restartTries=0;recoveryAttempt=0;"
+      },
+      {
+        "start": 7808,
+        "end": 7808,
+        "old": "",
+        "new": ";currentRecoveryTries=0;restartPending=null;restartTries=0;recoveryAttempt=0"
+      },
+      {
+        "start": 8777,
+        "end": 8777,
+        "old": "",
+        "new": "currentRecoveryTries=0;restartPending=null;restartTries=0;recoveryAttempt=0;"
+      }
+    ]
+  }
+]

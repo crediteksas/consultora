@@ -1,0 +1,59 @@
+**Verdict: NO APROBADO PARA PUBLICAR.** There is one concrete code blocker, and the evidence needs two fixes before deploy. I only read the files you listed and wrote nothing.
+
+## Blocker: `recoverName` doesn't enforce the "exclusive" checks you described
+
+In `candidate/operational/extension/driver.mjs:48-51`:
+
+1. **It doesn't require a single, exact name prompt.** The check at line 48 is `following.some(...)`, and it accepts either the name prompt **or** the provider's ID-number prompt (`comparteme tu numero de cedula…` / `me indica su numero de cedula`). Other provider messages may also follow, as long as one of them matches. This is the same as the legacy rule; the exclusive proof doesn't tighten it.
+   - Example: the provider re-asks for the ID number, or sends some other message within 5 minutes of the document confirmation. The connector would then send the authorized name into the wrong conversation state. The runner should catch it, so no result gets invented, but it's an unnecessary send of personal data.
+2. **The exclusive checks only run when the prompt is older than 2 hours.** Line 51 is `now()-at>2*3600000&&!exclusiveHeldPrompt`. When the prompt is under 2 hours old, the journal binding is skipped entirely: request created ≤ document confirmation, the 5-minute prompt window, and the 24-hour cap. Under 2 hours is the normal restart case (lease of about 5 minutes plus the 60-second grace), so the binding is skipped most of the time.
+
+**Fix:** when `proof?.exclusiveResume===true`, require `exclusiveHeldPrompt` whatever the prompt's age. Also require exactly one message after the document, and that it is exactly the name prompt (`me brinda por favor su nombre y apellido`): no ID-number alternative and no extra messages. Add driver tests for:
+- the provider re-asking for the ID number;
+- a name prompt followed by another provider message;
+- an exclusive proof under 2 hours with a prompt outside the window.
+
+## Evidence that must be fixed before deploy
+
+- **No single log covers the final candidate.**
+  - `tests.log` has 33 tests but no "crash before RPC, reply lost…" test. That test exists only in `native-tests.log`.
+  - `restart-tests.log` is stale: 6 tests, with no "0-60 second grace" test.
+  - Run all the new tests (including the crash test) once on the fixed files and keep that log.
+- **`legacy-tests.log` shows 34/34 passing**, but you said that suite was still running. Please confirm the log comes from the final candidate, rerun after the driver fix.
+- **I couldn't check that `restart.sql` matches the migration** in `db-aura/supabase/migrations/20261126224431_…sql`, because it was outside the read scope. Diff them before applying.
+- **I didn't verify `runner.resumeDocument`.** It lives in `pilot-runner.mjs`, which was out of scope. The engine at `engine.mjs:59` depends on it.
+
+## What I checked and found OK
+
+- **SQL (`restart.sql`):**
+  - Takes the channel lock, then locks the row.
+  - Checks the same lease and the exclusive channel.
+  - Requires no observation, `checked_at` or completion.
+  - Checks all 13 store origins plus receipt, hash, consent and data consent.
+  - Enforces service hours now and in 5 minutes.
+  - Refuses renewal within the 60-second grace and after 3 attempts.
+  - Repeated calls on an already-renewed job never add time or attempts.
+  - Only `service_role` can execute it; it runs as the caller with an empty search path.
+- **Gateway:**
+  - Checks the token and rejects any Origin header.
+  - Whitelists body keys (exactly `id` and `lease_id`).
+  - Allows only listed RPCs.
+  - Enforces hours now and in 5 minutes.
+  - Runs `verifySource` before and after the call.
+  - After the RPC, requires the same job, lease, application, source, payload and inputs, plus `current()`.
+- **Native engine:**
+  - The `restartPending` marker is created only after the lease has been expired for at least 60 seconds, and before the RPC.
+  - The journal must be at the document stage before any RPC.
+  - It checks the view before the call and again after it.
+  - After the call it requires the exact expected attempt, the same lease, a future expiry beyond max(now+10s, old expiry+60s), and the same inputs.
+  - A normal live attempt 2 without the marker never calls restart.
+  - Retries are bounded by `restartTries` and the server's limit of 3 attempts.
+  - A lost reply reuses the repeat-safe RPC reply, and the marker is cleared on the final release path.
+- **Journal:** the original failed-name prefix is kept, bounded at 3 name pairs and at most 2 recovery markers.
+- **Lost name acknowledgement:** this can't cause a resend, because the last outgoing message must equal the document.
+- **`verifyView`:** it activates the single existing WhatsApp tab.
+- **UI:** the changes are display-only. The commercial view hides the checks and sends technical items to Creditek. Terminal states are unchanged, and nothing auto-approves or invents a result.
+
+Minor, not a blocker: during service hours, jobs left blocked overnight at attempt 0 will show "technical" as soon as 8:00 passes, because `created_at` is more than 2 minutes old. You may want to measure the 2 minutes from service opening instead.
+
+Once the driver fix, a single complete passing log, the SQL/migration diff and the legacy rerun are in place, the candidate can come back for an APROBADO.

@@ -1,0 +1,61 @@
+I can't approve this yet. The design is close, but four things have to be settled first, and the first one is the root cause the plan says it repairs. I made no writes and sent nothing. I read only the files you allowed, plus `restart.sql` in the same folder. I did not read `pilot-runner.mjs`, the full Worker, or any other SQL, so anything that depends on them is marked unverified below.
+
+## Blockers
+
+**1. The real root cause hasn't been found.**
+- The current reason, `RECOVERY_NOT_CONFIRMED` since 18:59, comes from the catch in `engine.mjs:52`. That catch replaces every error except `BROWSER_READ_INCOMING_FAILED`.
+- At 18:59 the lease was still valid (it ran to 19:03). So the existing recovery path already ran and failed: it reads the journal, which has the right `name` shape (`pilot-journal.mjs:15`), then calls `recoverName` and `resumeDocument`.
+- The first run also stopped at the name send (`send_intent authorized_name`, then `stopped`).
+- So the name step has failed twice. The expired lease came after that and is a symptom. Possible causes include:
+  - the name not being returned (`AUTHORIZED_NAME_UNAVAILABLE`, from the regex check at worker:169);
+  - a compose failure on the name (`DRAFT_PRESENT`/`UNEXPECTED_DRAFT`);
+  - `NO_PENDING_NAME_PROMPT`.
+- If the cause is any of these, a fresh greeting will reach the same step and fail again, using up attempts 2 and 3.
+- **Fix:** before patching, read the error code locally without exposing personal data: the `readDiagnostic` the driver saves, and `recoveryStep`. Also make `fail()` keep the real error code.
+
+**2. A crash right after the renewal could resume the old conversation.** Once the lease is renewed, the existing branch at `engine.mjs:52` (job running, current lease, journal resumes at the document step, then `recoverName`) would run on any restart. It could send the name into the old conversation. Any `restartPending` state has to skip that branch and either continue the restart or go to review.
+
+**3. It's unconfirmed that a mid-conversation greeting is safe.**
+- The only existing precedent for a fresh greeting is `isFreshStart` (`driver.mjs:10-12`), and it applies only when the provider is asking for the cédula.
+- Here the provider is asking for the name. "Hola KrediYa" could be taken as the name.
+- That wouldn't produce a false result, because the runner pauses on unexpected replies. But it uses up an attempt.
+- I couldn't check how `runner.begin` behaves because `pilot-runner.mjs` wasn't in the allowed list.
+
+**4. Parts of the Worker and database weren't in the extract:**
+- the code that builds `summary.platforms`, where `createdAt` would be added;
+- the store tracking handlers (`storeResult`);
+- the SQL for `nova_next_krediya_browser_job`, to confirm the store-code list, the advisory-lock key and the sweeper behaviour match `restart.sql`;
+- the schema of `nova_krediya_browser_channel`, in case it has its own expiry that also needs extending.
+
+## Required changes to the plan
+
+- **Change the order** so a failed check doesn't use up an attempt:
+  1. Check the journal shape.
+  2. Run `verifyView`.
+  3. Run the read-only baseline check: last outgoing message equals the job's document, the last incoming is a name prompt from the provider, and the draft is empty.
+  4. Persist `restartPending`.
+  5. Call `restart-expired`.
+  6. Rotate the journal and open a new one.
+  7. Run `verifyView` again (`sendText` needs a check within the last 15 s).
+  8. Send the fresh greeting.
+- **Driver:** pass the document into `baseline`, since the driver doesn't know it today.
+- **Gateway:** add `restart-expired` to the route regex (`worker:127`) and the RPC allowlist (`worker:118`). Accept only `{id, lease_id}`.
+  - Require `operating` and `hours(now())`.
+  - Read the job and check that its lease matches.
+  - Check consent and source with `validConsent` and `verifySource`. Don't use `current()`, because it rejects expired leases.
+- **SQL (`restart.sql`):** the logic looks right: same lease, a cap of 3, the idempotent case, consent with more than 6 minutes left, the channel still held, no reset. Two caveats:
+  - The `receipts` join could match more than one row; use `exists`.
+  - Confirm `updated_at` exists, and record the renewal wherever the existing audit trail lives.
+- **Timing:** a 5-minute lease against 225 s of conversation plus 30 s of closing leaves little margin. Make sure `finish` runs before the lease expires.
+- **UI timing:** a 2-minute threshold would label normal waiting as technical, because a job can wait about 5 minutes behind another one. Use 10 minutes or more, counted from the later of `createdAt` and the 8:00 opening.
+- **UI placement:** add the technical item for the store before the generic message at `worker:110`. Approved references already produce no "waiting" notice (`worker:85`).
+
+## Smaller safer alternative
+
+If the step-1 diagnosis shows the name step can work, skip the fresh greeting and the new baseline option:
+1. Renew the lease with the RPC above.
+2. Let the existing path at `engine.mjs:52` resume from the name step. It only allows this if the last outgoing message is the document, which proves the name was never sent.
+
+The fresh-greeting design is then needed only when the name prompt is more than 2 hours old (the `PROMPT_TOO_OLD` limit at `driver.mjs:48`), which by now is likely. In that case, add it with fixes 2 and 3 above.
+
+Nothing in this plan touches Aló, PayJoy, the references or the credit decision.

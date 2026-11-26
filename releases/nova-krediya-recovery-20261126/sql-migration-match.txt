@@ -1,0 +1,1 @@
+PASS: exact restart.sql plus SET LOCAL lock_timeout only.

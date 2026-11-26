@@ -1,0 +1,58 @@
+**NO APROBADO TODAVÍA.** I found three concrete blockers. They are small, and once they're fixed the approach is approved for implementation. I couldn't write the plan file because Write is disabled in this session, so the full review is below. I read revised-plan.txt, targeted-worker.txt, restart.sql and the candidate `engine.mjs`, `driver.mjs`, `pilot-runner.mjs` and `pilot-journal.mjs`. Nothing was changed.
+
+## Blockers
+
+**B1. `restart.sql:27-32` has no 60s grace after the lease expires.** Any lease past `lease_until <= now()` is renewed, even 1 ms after it expires. So the plan's claim that the original operation is fenced off is not true in the SQL yet.
+- **Fix:** if `lease_until > now() - interval '60 seconds'` and `lease_until <= now()`, return null. Renew only when `lease_until <= now() - 60s`.
+- **Test:** add a PGlite test for the 0–60s window.
+
+**B2. The idempotent return in `restart.sql:27-28` doesn't prove a renewal happened.** `lease_until>now() and attempts>=2` also matches a live lease that was never renewed, for example after a normal second claim. Native would then run `exclusiveResume`, which skips the 2h guard, without any real renewal. This also clears up the unclear "currentattempt>=2" versus "up to 3" wording.
+- **Fix (native only, no schema change):**
+  - Only start once the lease has been expired for more than 60s.
+  - Before the RPC, persist `restartPending:{expectedAttempts: job.attempts+1, expiredLeaseUntil}`.
+  - Accept the result only if `attempts===expectedAttempts`, `lease_id` is unchanged, and `lease_until > max(now+10s, expiredLeaseUntil+60s)`. Anything else goes to review.
+
+**B3. Renewal doesn't check service hours.** A renewal at 19:58, or outside hours, uses up a server attempt, and then `send()` stops with `OUTSIDE_SERVICE_HOURS`. `status()` in `engine.mjs:69` also lets this recovery start automatically, so this can happen without anyone triggering it.
+- **Fix:** both the gateway `restart` action and native, before the RPC, must require `hours(now())` and `hours(now()+300000)`.
+
+## Conditions to include in the patch (not blockers)
+
+1. **Tie the prompt to the document send, not only to `created_at`.** The `created_at` to `created_at+5min` window only works if the job was claimed soon after it was created. If it was queued earlier, recovery is refused safely, but it won't fix this case.
+   - Check the held job's `created_at` against the journal's `send_confirmed authorized_document` `at`.
+   - Use the window `[floor(docConfirmedAt/60000)*60000, docConfirmedAt+5min]` from the current reservation's journal, and require `created_at <= docConfirmedAt`.
+2. **Do a read-only UI check before renewing.** Run `verifyView` plus the `lastOutgoing===doc` and following-message checks before the RPC, so a UI mismatch doesn't use up an attempt. Repeat the full `recoverName(exclusive)` after renewal.
+3. **Remove the old restart path completely:**
+   - `engine.mjs:39-54`: `recoverJournal(true)`, `openJournal`, `runner.begin()` and the new `reservation_intent`.
+   - `driver.mjs:14-16`: `sameExpiredDocument`, including the `'Hola KrediYa'` branch.
+   - The new flow is: `resumeJournal()` returns `'document'`, then `recoverName(doc,{exclusiveResume,anchor})`, then `runner.resumeDocument`, then `continueConversation`. Clear `restartPending` only after `reservation_received` has been written.
+4. **Gateway `restart` action:**
+   - Add it to the path regex (`targeted-worker.txt:127`) and the RPC allowlist (`:118`).
+   - The body must be exactly `{id,lease_id}` and `operating` must be true.
+   - Before the RPC, check every `current()` field except the lease, plus `verifySource`. After it, run the full `current()` and `verifySource` again.
+   - Keep the Origin and token rejection as they are.
+5. **Journal limit:** `nameAttempts` (`pilot-journal.mjs:20`) already allows up to 3 name pairs and 2 recovery markers. If the real journal has 2 pairs and 1 marker, only one more recovery is possible. Confirm that against the live journal; if the limit is already used up, this needs manual review rather than a wider pattern.
+6. **UI:** the option that leaves the fingerprint alone is fine. In `commercialStoreWorkflow`, add a single "Validación técnica pendiente" item so line 110 doesn't add a duplicate generic one. I didn't check `registrationProgress` in `baseline/clientes/index.mjs` because it was outside the allowed scope.
+
+## Checks that hold up
+- **The old prompt is processed once:** it isn't in `firstSeen` (`driver.mjs:53`), so it comes through as a new event, and the runner accepts it because `receivedAt=now ≥ lastSent`.
+- **Provider session reset:** `providerResets` allows exactly one document re-send, and nothing ever clicks to apply for credit.
+- **No duplicate name:** if the name was sent and then something fails, the next `recoverName` refuses because the last outgoing message is no longer the document.
+- **Same lease is safe:** the original 225s run, 25s browser calls and 60s grace are well inside the 3.5h since expiry, and there is a single native owner.
+
+## Tests to add
+- **PGlite:**
+  - The 0–60s grace window.
+  - `attempts=3` is refused.
+  - Replaying the call returns the job unchanged.
+  - Native rejects a live lease that was never renewed.
+- **Native:**
+  - A crash at each point: before the RPC, after the RPC with the reply lost, before the counter is saved, and after it is saved.
+  - A name that was sent but never confirmed is refused.
+  - A prompt outside the time window is refused.
+  - Outside service hours, the RPC is not called.
+- **Gateway:** rejected with an Origin header, a bad token, extra body keys, outside service hours, or a source mismatch.
+- **UI:**
+  - Blocked jobs with `attempts=0` during and outside service hours.
+  - Stale running jobs.
+  - The commercial view hides platform names and amounts.
+  - Reference and photo pending items are kept.

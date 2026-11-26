@@ -1,0 +1,44 @@
+**APROBADO PARA PUBLICAR.** No code blocker remains. I only read the files in scope and changed nothing.
+
+## The previous blocker is fixed
+
+`recoverName` in `candidate/operational/extension/driver.mjs:42-55`:
+- **Exact name prompt (line 51-52):** an exclusive request now needs exactly one provider message after the document, and it must be "me brinda por favor su nombre y apellido". If the provider re-asks for the ID number or sends any extra message, it stops with `EXCLUSIVE_NAME_PROMPT_REQUIRED`.
+- **Age no longer matters (line 53):** an exclusive request always needs the full held-prompt proof, even when the prompt is under 2 hours old. That means: request created no later than the document confirmation, confirmation within the last 24 hours, and the prompt arriving between the confirmation's minute and 5 minutes after it. Old callers that pass just a document string keep the 2-hour rule.
+- **No sends:** the check before renewal (`engine.mjs:51`) only reads.
+- **Tests:** the three new driver tests are in `tests.log` (lines 8-10) and pass.
+
+## Current-lease recovery budget (`engine.mjs:78-79`) works as described
+
+- The counter goes up and is saved before the journal or browser is touched.
+- If the counter is already at 3 or more, it stops with `CURRENT_RECOVERY_RETRY_LIMIT` before anything else happens.
+- This path never calls renewal and never sends an exclusive request. It uses the old string form of `recoverName`.
+- `status()` only allows automatic recovery when there is no pending expired marker, the lease runs more than 10 seconds into the future, and `client.check` passes.
+- The current path can't override the pending marker's budget. In `resume()`, a resumable job with that marker always goes to `restartExpiredConversation` first, which keeps the `restartTries>=3` limit.
+
+## Resuming the held document and saving the real result are confirmed
+
+- **`pilot-runner.mjs:59-64`:** `resumeDocument` checks the job is current and its source verified. The document must match `job.inputs.document` exactly. It then goes straight to waiting for the menu, with no greeting, no document resend and no new request.
+- **Name send (line 95-98):** the authorized name goes out only through `send()`. That re-checks service hours, the WhatsApp view and the job, and writes the journal entry before sending.
+- **Held prompt is still used:** the driver stamps it with the read time (`driver.mjs:69`), so the runner doesn't drop it as stale.
+- **`completion-adapter.mjs`:** it re-reads the job before and after saving, and checks the saved row matches what it wrote. The credit decision is always empty and no result is ever invented.
+
+## Evidence
+
+- **`tests.log`:** a single run shows **40/40** passing (you said 39). It includes the crash/lost-reply test, the 0-60 second grace test, both current-lease budget tests, the full-runner save/close test, and the gateway, SQL, privacy and public-UI tests.
+- **`legacy-tests.log`:** 34/34 passing.
+- **`sql-migration-match.txt`:** says PASS. The migration starts with `SET LOCAL lock_timeout='5s'` and keeps the invoker setting, the empty `search_path`, REVOKE from PUBLIC/anon/authenticated, and GRANT to `service_role` only.
+
+## Minor issue, not blocking (it fails safe)
+
+`currentRecoveryTries` is reset only on the normal save/close path (`engine.mjs:75`). Four other paths clear the context without resetting it:
+- the observed/unavailable release at the end of line 79;
+- the `BROWSER_SEND_NOT_CONFIRMED` path;
+- both `EXPIRED_GREETING_RELEASED` paths (lines 14-19 and 32).
+
+Also, `tick()` doesn't reset it when a new job is claimed. So a job that ends with 3 tries used can make the next job go to manual review instead of retrying automatically. It never causes an extra send, and it clears after the next normal close. To fix it later, set `currentRecoveryTries=0` wherever `context=null` is set and when a job is claimed in `tick()`.
+
+## Before and after deploy (your stated steps, still to do)
+
+1. Commit and push the candidate, then apply the migration exactly as matched.
+2. After deploy, check live that a result is actually saved, and check the hashes and the function's ACL.

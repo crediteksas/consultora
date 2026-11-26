@@ -1,0 +1,37 @@
+**Verdict: not approved as written.** The direction is right: renew the same lease and job, add no new permissions, and don't fabricate a result. But there are four concrete blockers and two corrections. I changed nothing; I only read files.
+
+## What the files show
+
+- **State.** `state.json` has reason `RECOVERY_NOT_CONFIRMED` at 18:59:11Z with the old job's context and lease.
+- **Journal.** The last run in `journal/pilot.jsonl` (lines 559–565) matches the engine's `name` recovery shape exactly: name `send_intent` at 18:58:39, then `stopped operation_error` at 18:58:45. So `resumeJournal` will return `recoveryStage='document'`.
+- **Why the name step failed.** The 6-second gap equals the compose wait timeout (`driver.mjs:6`, `:21`), so this was almost certainly `BROWSER_COMPOSE_FAILED`. The two earlier runs today sent the name in under 1 second, so this failure was situational, not a protocol change. Likely causes are lost focus on the WhatsApp tab or a provider message arriving after the name prompt.
+- **Why the 18:59 resume failed.** `RECOVERY_NOT_CONFIRMED` only comes from an error thrown outside the runner (`engine.mjs:52`). Runner stops return their own reasons. So `recoverName` or `resumeJournal` threw. Candidates are a leftover draft, no pending name prompt, or the 25-second browser call timeout (`host.mjs:5`), which fits the 26 seconds between the two timestamps.
+- **Why it's stuck now.** With the lease expired, `resume()` falls through to `RUNNING_OR_UNCERTAIN_JOB_REQUIRES_REVIEW`. `status()` never sets `automaticRecoveryAllowed`. That matches what you're seeing live.
+
+## Blockers
+
+1. **The cause of the 18:59 failure is unknown.** If it was focus loss or an extra provider message, a fresh run will fail again at the name step and use up attempts 2 and 3. Sonivox would still be stuck. Before patching, take a read-only snapshot of the live chat: draft content, last outgoing message, the messages after it, and the extension's stored `status`.
+2. **Sending a fresh greeting while the provider waits for a name is unsafe.** "Hola KrediYa" is two words of letters, so it passes a name pattern. If YaBot takes it as the name, it runs a lookup with a bogus name against the client's document. The runner would stop with `UNRECOGNIZED_PROMPT` and nothing would be saved, but the provider still gets wrong data. So `restartExpiredDocument` should not accept "last incoming is the name prompt". See the alternative below.
+3. **The AURA SQL isn't available locally.** `nova_release_expired_krediya_greeting`, `nova_next_krediya_browser_job` and the channel-hold table appear in no local migration; only the two allied/lujored migrations exist. Pull the live function definitions (`pg_get_functiondef`) and the table schemas first. "Channel held by this lease" and "attempts" can't be specified safely without them.
+4. **The UI change would change the decision state.**
+   - The "Esperando respuesta de referencias" label comes from `decision.state==='waiting'`, which `waitingForKrediya` forces (`index.mjs:78088-78090`) with `requiresAndrea:false`.
+   - If you make that time-bounded, the decision flips to review and Andrea alerts fire. That breaks "UI only".
+   - If you keep the decision as is, the existing review alerts won't fire for the stalled case, so "Andrea alerted via existing notify" doesn't happen.
+   - You need to pick one: (a) UI only, with no alert, or (b) accept a decision change scoped to this technical-stall reason only.
+
+## Corrections
+
+- **The gateway needs its own check.** The existing `current()` rejects an expired lease (`index.mjs:78673`). The renewal needs a variant that checks everything except the lease time: same id, lease, payload hash, document, phone, valid consent and `verifySource`. The RPC itself must repeat the checks for job status, lease and held channel.
+- **Adding `createdAt` to `summary` changes every case's fingerprint** (`index.mjs:78097`), so every candidate gets re-saved through the KORA `nova_retail_save` call. Confirm a re-save with no real change doesn't bump revisions or trigger alerts. If it does, keep `createdAt` out of the fingerprint input. Also add `created_at` to both `nova_platform_jobs` selects (`:78040`, `:78048`). A `running` job past its lease currently shows "En curso" (`:77666`), so add an expired-lease case labelled technical, using `updated_at` plus 2 minutes as `querying` already does.
+- **Define every crash point.** If it crashes after renewal but before the new journal opens, `restartPending` is set and there's no lock. If it crashes after the new `reservation_intent`, the existing greeting recovery handles it. `restartPending` must take priority over the old `document` recovery path, or a renewed lease would send it back into `recoverName`.
+
+## Safer alternative
+
+1. Take the read-only chat snapshot first.
+2. If the last provider message is a closing or inactivity message (the existing `closeText`), use your fresh-greeting restart as designed. The existing `baseline()` already accepts a closed conversation.
+3. If the last message is still the name prompt and it's under 2 hours old (the `PROMPT_TOO_OLD` limit), renew and reuse the existing `recoverName` → `resumeDocument` path. That needs no driver change and sends the real authorized name.
+4. If it's older than 2 hours and not closed, or a draft is present, refuse and leave it for a person to review.
+
+This keeps the renewal RPC (attempts capped at 3, idempotent when the lease is already current), the native-only gateway action, and the engine changes. It drops the new driver baseline option unless the snapshot shows it's needed. Aló, PayJoy, references and saved queries are untouched either way.
+
+I couldn't write the plan file or submit it for approval because those tools aren't available in this session. After you resolve blockers 1, 3 and 4, I can draft the final plan.

@@ -1,0 +1,35 @@
+
+ ⛅️ wrangler 4.114.0 (update available 4.168.0)
+───────────────────────────────────────────────
+Attaching additional modules:
+┌──────────────────┬──────┬────────────┐
+│ Name             │ Type │ Size       │
+├──────────────────┼──────┼────────────┤
+│ form.html        │ text │ 130.97 KiB │
+├──────────────────┼──────┼────────────┤
+│ Total (1 module) │      │ 130.97 KiB │
+└──────────────────┴──────┴────────────┘
+Total Upload: 770.66 KiB / gzip: 174.13 KiB
+Your Worker has access to the following bindings:
+Binding                                                                                  Resource                  
+env.LEGACY_REGISTRATION_SITE (creditek-registro)                                         Worker                    
+env.NOVA_REGISTRATION (creditek-nova)                                                    Worker                    
+env.NOVA_DOCUMENT_AI                                                                     AI                        
+env.NOVA_QUALITY_LIMIT (12 requests/60s)                                                 Rate Limit                
+env.ALLOWED_ORIGIN ("https://registro.crediteksas.com")                                  Environment Variable      
+env.ALLOW_LEGACY_REGISTRATION_LINKS ("true")                                             Environment Variable      
+env.ENVIRONMENT ("production")                                                           Environment Variable      
+env.KORA_NOVA_CONSENT_TEXT_VERSION ("nova-pilot-20260915-v1")                            Environment Variable      
+env.KORA_NOVA_POLICY_HASH ("e482ba5840a84938043c159e6787f07fb8748...")                   Environment Variable      
+env.KORA_NOVA_POLICY_VERSION ("2.0")                                                     Environment Variable      
+env.NOVA_PLATFORM_RENEWAL_ENABLED ("true")                                               Environment Variable      
+env.NOVA_REGISTRATION_ACCEPT_FROM ("2026-09-16T04:08:21.773Z")                           Environment Variable      
+env.NOVA_REGISTRATION_CAPTURE_ENABLED ("true")                                           Environment Variable      
+env.NOVA_REGISTRATION_DELIVERY_ENABLED ("true")                                          Environment Variable      
+env.NOVA_REGISTRATION_PILOT_ORIGINS ("CK-01,CK-02,CK-03,CK-04,CK-05,CK-06,C...")         Environment Variable      
+env.NOVA_REGISTRATION_RECOVERY_ENABLED ("true")                                          Environment Variable      
+env.NOVA_RETAIL_ENABLED ("true")                                                         Environment Variable      
+env.NOVA_SMS_ENABLED ("true")                                                            Environment Variable      
+env.REPORTES_FORMATO_ORDENADO ("true")                                                   Environment Variable      
+
+--dry-run: exiting now.

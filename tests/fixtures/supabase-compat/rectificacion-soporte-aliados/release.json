@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Prueba aislada de permisos para rectificación de soporte, no prueba de producción.",
+  "migration_sha256": {
+    "supabase/migrations/20261126192204_rectificacion_soporte_aliados.sql": "3e388aefeba83883f4f551ecd93dab8f393518a6d0e88105880d2f1944101b11"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-rectificacion-soporte-aliados.test.mjs",
+      "sha256": "e4acac86f2435d039a50865c7136febf377fb3f96e7d75586e05190b12fd2f3e"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "fixture_sha256": "26a9fef14bef9bf084227bb0101c9f3ff1033d88f8d9d2196199ce5dff589db0",
+  "emitter_sha256": "9f9695c300b3f6b7f2adb3bb600fcc7b73d683c0fe6592126839364b395e92f9",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/upgrade-before.json",
+      "sha256": "07b86a9fae3028fce48b3806539830c4f1d247dfbcb673cccf6e61bf6aca23d7"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/upgrade-after.json",
+      "sha256": "25445d83a85583bf336ad5964235a9aacd4b4b1a8ed5a99e0f34ab416cd596ab"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/upgrade-contract.json",
+      "sha256": "538ff83e9053cd5580be2065ad96ba5d679b5962f45ce1179a4e8af87c3107a5"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/upgrade-created.json",
+      "sha256": "a500ddd4e13796057e09abb86707d56cc15845f202a0d80dc0a3ca228bbcab9f"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/rebuild-before.json",
+      "sha256": "777428e76221842094e087ab718bfc399945ebe5deee0b4f6df7850338f3dcb1"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/rebuild-after.json",
+      "sha256": "3bcb7726c572d0020a8315ad320ed9bd28666546fdfa792942fbc2bce3f15a6c"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/rebuild-contract.json",
+      "sha256": "3921f6357153f5a890e85cc19b6fd932e94236aac81805932f771f2fa74f8bd4"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/rebuild-created.json",
+      "sha256": "a500ddd4e13796057e09abb86707d56cc15845f202a0d80dc0a3ca228bbcab9f"
+    }
+  }
+}

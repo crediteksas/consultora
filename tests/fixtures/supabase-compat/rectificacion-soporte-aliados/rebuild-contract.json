@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "banco_creditek_pago_trigger",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "ce50ae3c2b13f74908752143c32b7f13",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-rectificacion-soporte-aliados.test.mjs",
+      "justification": "Restricción privada; conserva privilegios existentes y registra reverso sin ejecutar transferencias."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "rectificar_soporte_aliado",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_pago uuid, p_movimiento uuid, p_actor uuid, p_motivo text, p_valor numeric, p_soporte text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "1be5c7b697588345813298004c7d813e",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-rectificacion-soporte-aliados.test.mjs",
+      "justification": "Restricción privada; conserva privilegios existentes y registra reverso sin ejecutar transferencias."
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "rectificaciones_soporte_aliados",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "kora_private",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "payment_order_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "movimiento_original",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "movimiento_reverso",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "snapshot_orden",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "snapshot_cartera",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "eventos_previos",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "autorizado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-rectificacion-soporte-aliados.test.mjs",
+      "justification": "Restricción privada; conserva privilegios existentes y registra reverso sin ejecutar transferencias."
+    }
+  ]
+}

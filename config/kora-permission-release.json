@@ -94,6 +94,10 @@
     {
       "path": "tests/fixtures/supabase-compat/prior-nova-auto-alerts/release.json",
       "sha256": "4052fe2b672b241310078e64121d642ac69b3b61f7c97d54db4ee7b9a4ff4b49"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/rectificacion-soporte-aliados/release.json",
+      "sha256": "26c1af4a00ba789ac0c0c3a6b870dbb25924e9372672695c45ea2af90d6bdfd5"
     }
   ],
   "upgrade": {

@@ -1,0 +1,19 @@
+[
+  {
+    "schema": "kora_private",
+    "name": "banco_creditek_pago_trigger",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "rectificar_soporte_aliado",
+    "kind": "function",
+    "identity": "p_pago uuid, p_movimiento uuid, p_actor uuid, p_motivo text, p_valor numeric, p_soporte text"
+  },
+  {
+    "schema": "kora_private",
+    "name": "rectificaciones_soporte_aliados",
+    "kind": "r"
+  }
+]

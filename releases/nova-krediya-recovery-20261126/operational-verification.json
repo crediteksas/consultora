@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-11-26T23:04:26.145Z",
+  "implementationCommit": "92534f66",
+  "tests": {
+    "new": 41,
+    "legacy": 34,
+    "total": 75
+  },
+  "review": "Claude approved publication and counter reset delta",
+  "functionChecks": {
+    "exactBody": true,
+    "invoker": true,
+    "owner": "postgres",
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "searchPath": [
+      "search_path=\"\""
+    ]
+  },
+  "securityAdvisors": {
+    "before": 6,
+    "after": 6,
+    "unchanged": true
+  },
+  "native": {
+    "version": "1.0.20",
+    "renderedReloadVerified": true
+  },
+  "production": {
+    "nova": "8aa0cd4b-2236-45a8-a97a-464b9ca8a322",
+    "clientes": "c18a7e7b-2b29-4fb1-a1ee-c6d597f58429"
+  },
+  "live": {
+    "previousHeldConversation": "recovered automatically and real result persisted",
+    "subsequentQueue": "automatically processing",
+    "targetStore": "Sonivox",
+    "targetStatus": "completed automatically; response persisted; NOVA authorized",
+    "krediyaSavedAt": "2026-11-26T23:03:25.536683+00:00",
+    "novaClosedAt": "2026-11-26T23:03:46.311+00:00",
+    "decision": {
+      "state": "authorized",
+      "canProcess": true,
+      "platformsReady": true,
+      "requiresAndrea": false
+    },
+    "commercialProjection": {
+      "storeTitle": "Puedes continuar",
+      "trackingTitle": "Puedes continuar",
+      "pendingCount": 0,
+      "platformDetailsHidden": true
+    },
+    "preserved": {
+      "aloOriginalCheckedAt": "2026-11-26T22:16:27.164592+00:00",
+      "payjoyOriginalCheckedAt": "2026-11-26T22:16:15.098888+00:00",
+      "aloAttempts": 1,
+      "payjoyAttempts": 1,
+      "photosApproved": 3,
+      "referencesApproved": 2
+    }
+  }
+}

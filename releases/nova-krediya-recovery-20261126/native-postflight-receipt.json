@@ -1,0 +1,36 @@
+{
+  "installedAt": "2026-11-26T22:57:07.682197+00:00",
+  "version": "1.0.20",
+  "changedFiles": {
+    "extension/manifest.json": {
+      "before": "4b738312426dae93cf574b13202b8c15ca8933b952b0d2e56c482c77ec5ab02a",
+      "after": "45b5bd74eca5b72b3443fd1365531014ac1fe7d2a52cbe17eb42dcb2e6ade1a3",
+      "mode": 384
+    },
+    "extension/driver.mjs": {
+      "before": "ebdb82d3e75b19a6bbb3883e8e9a41855117235daa466ff89b6872cdedcc2cff",
+      "after": "35eabc4ac3b229287c80058856bbdac85620b1ece0e2df57ace78df572bedfd7",
+      "mode": 384
+    },
+    "lib/krediya-browser-20261103/pilot-journal.mjs": {
+      "before": "432925b62a9392c615d42fa4222af7cdc14cecc7ca52be0957929de5e168f4e8",
+      "after": "943b3fcae2a4050ab408d562b7875ecff3f6caacfeea24d2b3ee7d6ecddb0ad6",
+      "mode": 384
+    },
+    "node/client.mjs": {
+      "before": "ca54063a61ded775ce1273ff97f1c4f671bd30615d6143f318418d87f8e2d22e",
+      "after": "a92ffb938e5146bcad2d12bf5998631d6cac054aca080a122d32232e506eb3c6",
+      "mode": 384
+    },
+    "node/engine.mjs": {
+      "before": "36914f3015838fb5f36d6090c74417e7012173434c9c7caf7563cb699b713d42",
+      "after": "4b94c066c6a6d807da532555116097163e56d9b5077c7222f365e299bc4ec793",
+      "mode": 384
+    }
+  },
+  "privateStateJournalAndConfigPreserved": true,
+  "permissionsUnchanged": true,
+  "chromeReloadStillRequired": false,
+  "chromeRenderedVersion": "1.0.20",
+  "chromeReloadVerified": true
+}

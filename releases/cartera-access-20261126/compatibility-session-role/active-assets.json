@@ -8,8 +8,8 @@
     "sha256": "5d7cb4eb57ae3ee009fe1571b9d9858d3ac1bdf800e04d11b651d2afa7bd4dae"
   },
   "creditek/erp/sidebar.js": {
-    "source": "releases/cartera-independiente-20261127/candidate/sidebar.js",
-    "sha256": "d94cd003873529f43c34fdfd884fe5a62f15f180025a9d75b139ba46eb3d5381"
+    "source": "releases/tesoreria-ubicacion-20261127/candidate/sidebar.js",
+    "sha256": "e165fb55270cf29f5a8e85ad49646837c4736b508bb83dd730318ff5bdff5e2d"
   },
   "creditek/erp/cobra-krediya-connection.js": {
     "source": "releases/cartera-access-20261126/candidate/cobra-krediya-connection.js",
@@ -44,8 +44,8 @@
     "sha256": "828ed28c3c841701b57931013c5518b96a87a1871b550bca0fe153d1bf6b3f5a"
   },
   "creditek/erp/kora-access-control.js": {
-    "source": "releases/cartera-access-20261126/compatibility-session-role/candidate/kora-access-control.js",
-    "sha256": "b17453a84f1addb712b94369e312acd0516af8a291dcad0b3113541b2828b213"
+    "source": "releases/tesoreria-ubicacion-20261127/candidate/kora-access-control.js",
+    "sha256": "d968e4fcb6346a2e48f4424c9db36f6e836b35e4da06619ce8b42e887870bb5e"
   },
   "creditek/erp/cobra-krediya-persistence.js": {
     "source": "releases/cartera-access-20261126/candidate/cobra-krediya-persistence.js",

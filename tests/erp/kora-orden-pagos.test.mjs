@@ -137,8 +137,8 @@ test('sin nombre de aliado usa beneficiario/titular/concepto y el HTML carga amb
   const rows=[{report_ref:'C',concept:'Zeta ficticia',bank_snapshot:{},valor:1},{report_ref:'B',bank_snapshot:{holder:'Beta ficticia'},valor:2},{report_ref:'A',liquidation_id:'L-ficticia',beneficiary_name:'Alfa ficticia',bank_snapshot:{},valor:3}];
   assert.deepEqual(Unified.orderPaymentReportRows(rows,()=> 'No aplica').map(p=>p.report_ref),['A','B','C']);
   const html=await readFile('creditek/erp/aliados-tesoreria.html','utf8');
-  assert.match(html,/tesoreria-pagos-unificados\.js\?v=20261103\.2\.0/);
-  assert.match(html,/aliados-tesoreria-app\.js\?v=20261126\.2\.1/);
+  assert.match(html,/tesoreria-pagos-unificados\.js\?v=20261127\.1\.0/);
+  assert.match(html,/aliados-tesoreria-app\.js\?v=20261127\.2\.0/);
 });
 
 test('el informe de giros se obtiene por cualquier rango y consolida por persona', () => {

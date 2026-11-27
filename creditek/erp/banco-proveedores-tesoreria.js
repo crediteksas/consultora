@@ -43,7 +43,7 @@
     if(initialized||!window.creditekSidebar?.sb)return;
     initialized=true;sb=window.creditekSidebar.sb;profile=window.creditekSidebar.perfil;
     if(!profile?.activo||!['gerencia','auditoria'].includes(profile.rol))return;
-    load();window.addEventListener('focus',load);
+    load();window.addEventListener('focus',load);document.addEventListener('kora-supplier-payment-changed',load);
   }
   document.addEventListener('kora-sidebar-ready',init,{once:true});
   if(window.creditekSidebar?.sb)init();

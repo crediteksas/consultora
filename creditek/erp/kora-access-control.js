@@ -58,9 +58,6 @@
       { label: 'Cartera Retail', href: 'cuenta-corriente.html#retail', icon: 'book-open-check' },
       { label: 'Reportes Retail', href: 'reportes.html', icon: 'file-chart-column-increasing' },
     ] },
-    { title: 'CRÉDITOS Y CARTERA', icon: 'badge-dollar-sign', items: [
-      { label: 'Cartera de créditos', href: 'creditos-cartera.html', icon: 'book-open-check' },
-    ] },
     { title: 'CREDITEK B2B', icon: 'warehouse', capability: 'b2b', items: [
       { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', icon: 'layout-dashboard' },
       { label: 'Resumen de saldos B2B', href: 'resumen-saldos-b2b.html', icon: 'scale' },
@@ -73,15 +70,16 @@
       { label: 'Facturas emitidas', href: 'facturas-emitidas-b2b.html', icon: 'receipt-text' },
       { label: 'Consignaciones', href: 'cuenta-corriente.html#consignaciones', icon: 'landmark' },
     ] },
-    { title: 'CREDITEK ALIADOS', icon: 'handshake', capability: 'aliados', items: [
-      { label: 'Dashboard Aliados', href: 'aliados-dashboard.html', icon: 'layout-dashboard' },
-      { label: 'Aliados', href: 'aliados.html', icon: 'handshake' },
-      { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round' },
-      { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left' },
-      { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet' },
-      { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },
-      { label: 'Bonificaciones', href: 'aliados-bonificaciones.html', icon: 'badge-dollar-sign' },
-      { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
+    { title: 'CREDITEK ALIADOS', icon: 'handshake', items: [
+      { label: 'Créditos y cartera', href: 'creditos-cartera.html', icon: 'book-open-check' },
+      { label: 'Dashboard Aliados', href: 'aliados-dashboard.html', icon: 'layout-dashboard', capability: 'aliados' },
+      { label: 'Aliados', href: 'aliados.html', icon: 'handshake', capability: 'aliados' },
+      { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round', capability: 'aliados' },
+      { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left', capability: 'aliados' },
+      { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet', capability: 'aliados' },
+      { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check', capability: 'aliados' },
+      { label: 'Bonificaciones', href: 'aliados-bonificaciones.html', icon: 'badge-dollar-sign', capability: 'aliados' },
+      { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt', capability: 'aliados' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
       { label: 'Tesorería', href: 'aliados-tesoreria.html', icon: 'landmark', capability: 'aliados' },
@@ -107,7 +105,6 @@
     'CREDITEK B2B': 1,
     'CREDITEK ALIADOS': 2,
     'TABLERO': 3,
-    'CRÉDITOS Y CARTERA': 4,
     'ADMINISTRACIÓN': 5,
   });
 
@@ -116,7 +113,6 @@
       { label: 'Resumen de mi tienda', href: 'reportes.html', icon: 'gauge', roles: ['admin_tienda', 'asesor'] },
       { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart', roles: ['admin_tienda', 'asesor'] },
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users', roles: ['admin_tienda', 'asesor'] },
-      { label: 'Créditos y cartera', href: 'creditos-cartera.html', icon: 'book-open-check', roles: ['admin_tienda', 'asesor'] },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
       { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2', roles: ['admin_tienda'] },
       { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },
@@ -128,6 +124,9 @@
       { label: 'Reportes', href: 'reportes.html#reportes', icon: 'file-chart-column-increasing', roles: ['admin_tienda', 'asesor'] },
       { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['admin_tienda'] },
       { label: 'Mis incidencias', href: 'incidencias.html#ver', icon: 'bug', roles: ['admin_tienda'] },
+    ] },
+    { title: 'CREDITEK ALIADOS', icon: 'handshake', items: [
+      { label: 'Créditos y cartera', href: 'creditos-cartera.html', icon: 'book-open-check', roles: ['admin_tienda', 'asesor'] },
     ] },
   ]);
 
@@ -188,7 +187,7 @@
 
   function navigationFor(profile, capabilities = {}) {
     const experience = resolveExperience(profile);
-    if (experience === 'portfolio') return capabilities.cartera === true ? [{title:'CRÉDITOS Y CARTERA',icon:'badge-dollar-sign',items:[{label:'Créditos y cartera',href:'creditos-cartera.html',icon:'book-open-check'}]}] : [];
+    if (experience === 'portfolio') return capabilities.cartera === true ? [{title:'CREDITEK ALIADOS',icon:'handshake',items:[{label:'Créditos y cartera',href:'creditos-cartera.html',icon:'book-open-check'}]}] : [];
     if (experience === 'corporate') {
       const hasFullCorporateAccess = profile.rol === 'gerencia';
       const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';

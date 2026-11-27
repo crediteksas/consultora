@@ -5,6 +5,8 @@
   const env=window.__KORA_ENV__;
   const sb=supabase.createClient(env.KORA_ERP_SUPABASE_URL,env.KORA_ERP_SUPABASE_ANON_KEY);
   const $=id=>document.getElementById(id);
+  const treasuryWorkspace=$('supplierPaymentsWorkspace');
+  const isTreasury=Boolean(treasuryWorkspace);
   const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n));
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Bogota'});
@@ -15,8 +17,9 @@
   }
   function etiquetaEstado(s){return estadoPresentacion(s)==='sustituido'?'Registro sustituido · pago personal de Óscar':s.estado;}
   function reportData(){
-    if(!reporteListo)throw new Error('Actualiza Banco antes de exportar; la consulta no ha terminado.');
-    const exact=n=>n==null?'Sin saldo registrado':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n));
+    if(!reporteListo)throw new Error('Actualiza la consulta antes de exportar; aún no ha terminado.');
+    const exact=n=>n==null?'Sin saldo registrado':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(n));
+    if(!isTreasury)return {filters:[['Cuenta','Banco Creditek · •••• 4006'],['Corte del saldo',cuenta?.fecha_corte||'Sin apertura registrada']],metrics:[['Saldo de control de Banco',exact(cuenta?.saldo_actual)]],tables:[]};
     const estados=['pendiente','autorizado','pagado','rechazado','sustituido'];
     return {filters:[['Cuenta','Banco Creditek · •••• 4006'],['Corte del saldo',cuenta?.fecha_corte||'Sin apertura registrada'],['Cobertura de pagos','Hasta 200 solicitudes más recientes; los importes son de esta consulta']],
       metrics:[['Saldo de control de Banco',exact(cuenta?.saldo_actual)],...estados.map(estado=>['Importe '+estado+' · solicitudes consultadas',exact(solicitudes.filter(s=>estadoPresentacion(s)===estado).reduce((n,s)=>n+Number(s.monto),0))])],
@@ -42,7 +45,7 @@
     $('cuentaEstado').innerHTML=`<p><strong>Creditek S.A.S. · •••• 4006</strong><br>${cuenta.banco?esc(cuenta.banco)+' · '+esc(cuenta.tipo_cuenta):'Banco y tipo de cuenta pendientes de confirmar'}</p>
       <p class="${sincronizada&&!diferencia?'ok':'error'}">${sincronizada?'Saldo de control: '+money(cuenta.saldo_actual)+' · corte '+esc(cuenta.fecha_corte):'Saldo bancario todavía no sincronizado. Ningún giro a proveedores puede registrarse.'}</p>
       ${diferencia?`<p class="error" role="status"><strong>Pendiente de conciliación: ${money(-Number(cuenta.saldo_actual))}.</strong> Los pagos realizados y sus soportes están registrados. Este saldo de control negativo no es el saldo disponible confirmado por el banco. Revisa ingresos y movimientos faltantes; no repitas los pagos.</p>`:''}
-      ${!sincronizada&&perfil.id===OSCAR?`<form id="sincronizarForm"><p>Óscar registra una sola apertura con el saldo real y su fecha de corte. Esta acción no crea pagos ni aplica facturas.</p>
+      ${!sincronizada&&perfil.id===OSCAR&&!isTreasury?`<form id="sincronizarForm"><p>Óscar registra una sola apertura con el saldo real y su fecha de corte. Esta acción no crea pagos ni aplica facturas.</p>
         <div class="grid"><label class="field">Saldo real (COP)<input name="saldo" type="number" min="0" step="1" required></label>
         <label class="field">Fecha de corte<input name="fecha" type="date" max="${today()}" required></label>
         <label class="field wide">Motivo y fuente de la cifra<input name="motivo" minlength="10" maxlength="300" required></label></div>
@@ -83,9 +86,9 @@
     $('pendientes').innerHTML=solicitudes.filter(s=>s.estado==='pendiente').map(s=>tarjeta(s,'decidir')).join('')||'<p>No hay solicitudes pendientes.</p>';
     $('autorizados').innerHTML=solicitudes.filter(s=>s.estado==='autorizado').map(s=>tarjeta(s,'pagar')).join('')||'<p>No hay pagos autorizados por girar.</p>';
     $('historial').innerHTML=solicitudes.filter(s=>['pagado','rechazado'].includes(s.estado)).map(s=>tarjeta(s,'')).join('')||'<p>No hay movimientos en este libro.</p>';
-    document.querySelectorAll('[data-aprobar]').forEach(b=>b.onclick=()=>decidir(b.dataset.aprobar,true));
-    document.querySelectorAll('[data-rechazar]').forEach(b=>b.onclick=()=>decidir(b.dataset.rechazar,false));
-    document.querySelectorAll('.pagoForm').forEach(f=>f.onsubmit=registrarGiro);
+    (treasuryWorkspace||document).querySelectorAll('[data-aprobar]').forEach(b=>b.onclick=()=>decidir(b.dataset.aprobar,true));
+    (treasuryWorkspace||document).querySelectorAll('[data-rechazar]').forEach(b=>b.onclick=()=>decidir(b.dataset.rechazar,false));
+    (treasuryWorkspace||document).querySelectorAll('.pagoForm').forEach(f=>f.onsubmit=registrarGiro);
   }
   async function cargar(){
     reporteListo=false;
@@ -115,7 +118,7 @@
     busy=false;
     if(error){aviso('solicitarEstado','No se registró: '+error.message,true);validarSolicitud();return;}
     requestId=null;$('monto').value='';$('concepto').value='';
-    aviso('solicitarEstado','Solicitud enviada a Óscar. Banco y facturas no cambiaron.');await cargar();
+    aviso('solicitarEstado','Solicitud enviada a Óscar. Banco y facturas no cambiaron.');await cargar();document.dispatchEvent(new CustomEvent('kora-supplier-payment-changed',{detail:{source:'supplier-workspace'}}));
   }
   async function decidir(id,aprobar){
     if(busy||perfil.id!==OSCAR)return;
@@ -128,7 +131,7 @@
     });
     busy=false;
     if(error){alert('No se registró la decisión: '+error.message);return;}
-    await cargar();
+    await cargar();document.dispatchEvent(new CustomEvent('kora-supplier-payment-changed',{detail:{source:'supplier-workspace'}}));
   }
   async function sincronizar(event){
     event.preventDefault();if(busy||perfil.id!==OSCAR)return;
@@ -142,7 +145,7 @@
     });
     busy=false;
     if(error){aviso('sincronizarEstado','No se sincronizó: '+error.message,true);return;}
-    await cargar();
+    if(isTreasury)await cargar();else{const result=await sb.from('banco_creditek_cuentas').select('*').eq('numero_cuenta','87600004006').maybeSingle();if(result.error)throw result.error;cuenta=result.data;renderCuenta();}
   }
   async function registrarGiro(event){
     event.preventDefault();if(busy||perfil.id!==MAITE||cuenta?.saldo_actual==null)return;
@@ -163,25 +166,27 @@
     });
     busy=false;
     if(error){form.querySelector('button[type=submit]').disabled=false;alert('No se registró el giro ni se movió ningún saldo: '+error.message);return;}
-    await cargar();
+    await cargar();document.dispatchEvent(new CustomEvent('kora-supplier-payment-changed',{detail:{source:'supplier-workspace'}}));
   }
   async function iniciar(){
     const {data:{session}}=await sb.auth.getSession();if(!session)return;
     const {data:p,error}=await sb.from('perfiles').select('id,rol,activo').eq('id',session.user.id).single();
     if(error||!p?.activo||!((p.id===MAITE&&p.rol==='auditoria')||(p.id===OSCAR&&p.rol==='gerencia')))return;
-    perfil=p;$('app').hidden=false;if(p.id===MAITE)$('solicitarPanel').hidden=false;
+    perfil=p;if(!isTreasury)$('app').hidden=false;
+    if(!isTreasury){
+      try{const result=await sb.from('banco_creditek_cuentas').select('*').eq('numero_cuenta','87600004006').maybeSingle();if(result.error)throw result.error;cuenta=result.data;renderCuenta();$('cuentaEstado').dataset.koraReportSource='banco';$('cuentaEstado').koraReportData=reportData;reporteListo=true;}
+      catch(e){$('cuentaEstado').textContent='No fue posible cargar Banco: '+e.message;}
+      try{if(!window.CreditekCobrosPlataformas)throw new Error('No se cargó el módulo de cobros.');const cobros=window.CreditekCobrosPlataformas.create({sb,canEdit:p.id===OSCAR,canVoid:p.id===OSCAR,compactBank:true,openDetails:new URLSearchParams(location.search).get('vista')==='cobros'});await cobros.mount($('cobrosPlataformas'));if(new URLSearchParams(location.search).get('vista')==='cobros')$('cobrosPlataformas').scrollIntoView({block:'start'});}catch(e){$('cobrosPlataformas').textContent='No fue posible consultar cobros de plataformas: '+e.message;}
+      return;
+    }
+    treasuryWorkspace.hidden=false;
+    if(p.id===MAITE)$('solicitarPanel').hidden=false;
     $('proveedor').onchange=validarSolicitud;
     $('monto').oninput=()=>{requestId=null;validarSolicitud()};
     $('concepto').oninput=()=>{requestId=null;validarSolicitud()};
     $('solicitar').onclick=solicitar;
     try{await cargar()}catch(e){$('cuentaEstado').textContent='No fue posible cargar Banco: '+e.message;}
-    try {
-      if (!window.CreditekCobrosPlataformas) throw new Error('No se cargó el módulo de cobros.');
-      const cobros=window.CreditekCobrosPlataformas.create({sb,canEdit:p.id===OSCAR,canVoid:p.id===OSCAR,compactBank:true,openDetails:new URLSearchParams(location.search).get('vista')==='cobros'});
-      await cobros.mount($('cobrosPlataformas'));
-      if (new URLSearchParams(location.search).get('vista') === 'cobros')
-        $('cobrosPlataformas').scrollIntoView({block:'start'});
-    } catch(e) {$('cobrosPlataformas').textContent='No fue posible consultar cobros de plataformas: '+e.message;}
+    document.addEventListener('kora-supplier-payment-changed',event=>{if(event.detail?.source!=='supplier-workspace'&&!busy)cargar().catch(()=>{});});
   }
   iniciar();
 })();

@@ -24,7 +24,7 @@ test('proveedores autorizados entran en la hoja sin duplicar, inferir destino ni
 });
 test('tarjetas conservan el pago autorizado después de emitir orden y solo enlazan el soporte existente',()=>{
   const html=U.supplierCards([{...supplier,concepto:'<script>instrucciones</script>'}],String,new Set(['BP-supplier']));
-  assert.match(html,/Ya incluido en una orden/);assert.match(html,/banco-creditek.html#autorizados/);
+  assert.match(html,/Ya incluido en una orden/);assert.match(html,/#supplierPaymentsWorkspace/);
   assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>|data-banco-aprobar|data-financial-support/);
 });
 test('una orden reúne liquidaciones y nóminas aprobadas sin agrupar conceptos ni duplicar ID',()=>{

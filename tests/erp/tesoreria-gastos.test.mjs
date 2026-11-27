@@ -40,11 +40,15 @@ test('doble clic no repite decisión y los errores quedan visibles',async()=>{
   const first=f.host.onsubmit(event);assert.ok(release);const original=release;await f.host.onsubmit(event);assert.equal(release,original);
   release({error:{message:'Ya decidido'}});await first;assert.match(f.host.querySelector('[data-message]').textContent,/Ya decidido/);
 });
-test('Gastos autoriza el movimiento en Administración y Tesorería gestiona el pago',()=>{
+test('Gastos dirige las decisiones a Tesorería conservando el permiso financiero',()=>{
   const app=readFileSync(new URL('../../creditek/erp/finanzas-programadas-app.js',import.meta.url),'utf8');
   const treasury=readFileSync(new URL('../../creditek/erp/aliados-tesoreria-app.js',import.meta.url),'utf8');
   const treasuryHtml=readFileSync(new URL('../../creditek/erp/aliados-tesoreria.html',import.meta.url),'utf8');
-  assert.match(app,/sb\.rpc\('finanzas_decidir_movimiento'/);
+  assert.match(app,/Revisar en Tesorería/);
+  assert.doesNotMatch(app, /data-action="decision"/);
+  assert.match(treasuryHtml,/id="showExpenses"/);
+  assert.match(treasuryHtml,/tesoreria-gastos\.js/);
+  assert.match(treasury,/CreditekTesoreriaGastos\.create/);
   assert.match(app,/aliados-tesoreria.html/);
   assert.match(treasury,/sb\.rpc\('es_controlador_financiero'\)/);
   assert.match(treasury,/route.get\('vista'\) === 'gastos'/);

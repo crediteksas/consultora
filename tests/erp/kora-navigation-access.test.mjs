@@ -142,10 +142,10 @@ test('la navegación renderizada usa las unidades oficiales y no términos hered
   );
   assert.deepEqual(
     Array.from(corporate, section => section.title),
-    ['CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'TABLERO', 'CRÉDITOS Y CARTERA', 'ADMINISTRACIÓN'],
+    ['CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'TABLERO', 'ADMINISTRACIÓN'],
   );
   const store = access.navigationFor({ rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' });
-  assert.deepEqual(Array.from(store, section => section.title), ['MI TIENDA']);
+  assert.deepEqual(Array.from(store, section => section.title), ['MI TIENDA', 'CREDITEK ALIADOS']);
   const labels = JSON.stringify({ corporate, store });
   assert.doesNotMatch(labels, /Terceros|Partners|Operaciones Creditek|Tiendas propias/);
 });
@@ -155,7 +155,7 @@ test('matriz equivalente de Óscar conserva Retail, Créditos, B2B, Aliados y Ad
   const navigation = access.navigationFor(profile, { b2b: false, aliados: false });
   assert.deepEqual(
     Array.from(navigation, section => section.title),
-    ['CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'TABLERO', 'CRÉDITOS Y CARTERA', 'ADMINISTRACIÓN'],
+    ['CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'TABLERO', 'ADMINISTRACIÓN'],
   );
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, true);
@@ -188,9 +188,10 @@ test('Óscar y Maite ven Traslados dentro de Creditek Retail', () => {
 test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tienda', () => {
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01', es_operador_cartera: true, es_gestor_cartera: true };
   const navigation = access.navigationFor(profile, { cartera: true });
-  assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA']);
+  assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA', 'CREDITEK ALIADOS']);
   assert.ok(Array.from(navigation[0].items, item => item.href).includes('catalogo.html'));
-  assert.ok(Array.from(navigation[0].items, item => item.href).includes('creditos-cartera.html'));
+  assert.ok(Array.from(navigation[1].items, item => item.href).includes('creditos-cartera.html'));
+  assert.ok(!Array.from(navigation[0].items, item => item.href).includes('creditos-cartera.html'));
   assert.ok(Array.from(navigation[0].items, item => item.href).includes('traslados.html'));
   assert.equal(access.authorize(profile, 'catalogo.html').allowed, true);
   assert.equal(access.authorize(profile, 'creditos-cartera.html', { cartera: true }).allowed, true);
@@ -237,4 +238,14 @@ test('Tesorería aparece una sola vez en Administración conservando la capacida
       assert.equal(access.authorize(profile,'aliados-tesoreria.html',{aliados}).allowed,expected);
     }
   }
+});
+
+test('Cartera aparece una sola vez dentro de Aliados sin ampliar permisos',()=>{
+ for(const role of ['gerencia','auditoria','admin_tienda','asesor','operador_cartera']){
+  const p={rol:role,activo:true,tienda_codigo:role==='admin_tienda'||role==='asesor'?'CK-01':null};
+  const nav=access.navigationFor(p,{cartera:true,aliados:false});const sections=Array.from(nav).filter(s=>Array.from(s.items).some(i=>i.href==='creditos-cartera.html'));
+  assert.equal(sections.length,1,role);assert.equal(sections[0].title,'CREDITEK ALIADOS',role);
+  assert.equal(access.authorize(p,'creditos-cartera.html',{cartera:true}).allowed,true,role);
+ }
+ const audit={rol:'auditoria',activo:true};const group=Array.from(access.navigationFor(audit,{aliados:false})).find(s=>s.title==='CREDITEK ALIADOS');assert.deepEqual(Array.from(group.items,i=>i.href),['creditos-cartera.html']);
 });

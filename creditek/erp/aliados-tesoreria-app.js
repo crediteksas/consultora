@@ -64,7 +64,8 @@
     selectedCompensationId = null,
     treasuryView = "operational",
     cobros,
-    clients;
+    clients,
+    expenses;
   const canAuthorize = () =>
     profile?.rol === "gerencia" && profile?.activo !== false;
   const canViewOutgoing = () =>
@@ -560,7 +561,7 @@
     const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));
     const debtGroups=new Map();
     for(const d of recoveries){const amount=Number(d.importe)-Number(d.recuperado);debtGroups.set(d.beneficiary_id,(debtGroups.get(d.beneficiary_id)||0)+amount);}
-    recoverySummary.hidden=!recoveries.length;
+    recoverySummary.hidden=!recoveries.length || treasuryView !== "operational";
     recoverySummary.innerHTML=`<h2>Dinero por recuperar · todos los cortes</h2><p>Se cruza con los próximos pagos del mismo beneficiario. Si no tiene pagos, Gestión debe cobrarlo. No representa dinero ya recuperado.</p><strong>${cop([...debtGroups.values()].reduce((n,v)=>n+v,0))}</strong><details><summary>Ver ${debtGroups.size} beneficiarios</summary>${[...debtGroups].map(([id,value])=>`<p>${esc(data.beneficiaries.find(b=>b.id===id)?.nombre||'Beneficiario sin nombre')} · ${cop(value)}</p>`).join('')}</details>`;
     let correction = $("#rectificationSummary");
     if (!correction) {
@@ -571,25 +572,27 @@
     }
     const differences = (data.rectifications || []).filter(x => x.estado === "aprobado")
       .flatMap(x => (x.new_value?.diferencias_pagos || []).filter(d => d.estado === "pendiente_validacion_soporte"));
-    correction.classList.toggle("hidden", !differences.length || ["cobros", "clients"].includes(treasuryView));
+    correction.classList.toggle("hidden", !differences.length || ["cobros", "clients", "expenses"].includes(treasuryView));
     correction.innerHTML = differences.length ? `<h3>Krediya · ajuste numérico aplicado</h3><p>Mayte: validar soportes de ${cop(differences.reduce((n, d) => n + Number(d.diferencia || 0), 0))}. No es un nuevo pago ni dinero recuperado.</p><details><summary>Ver diferencias</summary>${differences.map(d => `<p>${esc(d.nombre)}: registrado ${cop(d.pagado)} · bono correcto ${cop(d.bono_correcto)} · diferencia ${cop(d.diferencia)}</p>`).join("")}</details>` : "";
     $("#cobrosPanel").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
+    $("#expensesContent").classList.toggle("hidden",treasuryView!=="expenses");
     $("#paymentDataPending").classList.toggle("hidden",treasuryView!=="operational" || !$("#paymentDataPending").innerHTML);
-    $("#outgoingContent").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
+    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","expenses"].includes(treasuryView));
     $("#paymentReport").classList.toggle("hidden",treasuryView!=="operational");
     $("#historyTools").classList.toggle("hidden",treasuryView!=="history");
     $("#showStoreMovements").classList.toggle("active", treasuryView === "storeMovements");
     $("#storeMovementsContent").classList.toggle("hidden", treasuryView !== "storeMovements");
     $("#paymentSections").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#addiAuthorizationSection").classList.toggle("hidden", treasuryView !== "operational" || !['gerencia','auditoria'].includes(profile?.rol));
-    $("#generalFilters").classList.toggle("hidden", treasuryView === "storeMovements");
-    $("#metrics").classList.toggle("hidden", treasuryView === "storeMovements");
+    $("#generalFilters").classList.toggle("hidden", ["storeMovements", "expenses"].includes(treasuryView));
+    $("#metrics").classList.toggle("hidden", ["storeMovements", "expenses"].includes(treasuryView));
     $("#showClients").classList.toggle("active",treasuryView==="clients");
+    $("#showExpenses").classList.toggle("active",treasuryView==="expenses");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
-    if(["cobros","clients"].includes(treasuryView))return;
+    if(["cobros","clients","expenses"].includes(treasuryView))return;
     renderPaymentHistory();
     renderDispatchHistory();
     const period = window.CreditekTesoreriaTercerizacion;
@@ -1604,6 +1607,9 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
       if(access.error)throw access.error;
       if (!access.error && access.data === true) {
         financialRecorder = window.CreditekPagosUnificados.createRecorder(sb);
+        expenses = window.CreditekTesoreriaGastos.create({sb, profile, domain:window.KoraFinancialDomain, onSummary:summary=>window.CreditekTesoreriaGastos.paintIndicator($("#showExpenses"),summary)});
+        $("#showExpenses").classList.remove("hidden");
+        expenses.refreshSummary();
       }
     } catch (error) { financialAccessError=true;console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
     if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
@@ -1631,7 +1637,7 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
     if (route.get('vista') === 'cobros' && cobros) {
       treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));return;
     }
-    if (route.get('vista') === 'gastos') { location.replace('finanzas-programadas.html?vista=general'); return; }
+    if (route.get('vista') === 'gastos' && expenses) { treasuryView='expenses';render();await expenses.mount($("#expensesContent"));return; }
     // Old preparation links now open the normal payment flow.
     if (route.get('vista') === 'preparacion') treasuryView='operational';
     if (route.get('vista') === 'clientes' && clients) {
@@ -1644,9 +1650,10 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
       $("#showOperational").classList.add("hidden");
       $("#showHistory").classList.add("hidden");
       $("#showStoreMovements").classList.add("hidden");
-      treasuryView = "cobros";
+      treasuryView = cobros ? "cobros" : "expenses";
       render();
-      await cobros.mount($("#cobrosContent"));
+      if (cobros) await cobros.mount($("#cobrosContent"));
+      else await expenses.mount($("#expensesContent"));
       return;
     }
     try {
@@ -1688,6 +1695,7 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
     try {
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
       else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
+      else if (treasuryView === 'expenses') await expenses?.mount($("#expensesContent"));
       else await load();
     } catch (error) {
       notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
@@ -1702,6 +1710,10 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
     treasuryView = 'clients';
     render();
     await clients.mount($("#clientsContent"));
+  };
+  $("#showExpenses").onclick = async () => {
+    if (!expenses) return;
+    treasuryView = "expenses"; render(); await expenses.mount($("#expensesContent"));
   };
   $("#paymentReport").onclick = paymentReport;
   async function showPaymentView(view) {

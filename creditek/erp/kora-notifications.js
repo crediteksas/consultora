@@ -44,7 +44,7 @@
       {key:'corozal-cash-correction',owner:'gerencia',rpc:'listar_rectificaciones_corozal',pendingStatus:'pendiente',title:'Rectificación del cierre de Corozal por autorizar',path:'/creditek/erp/ajustes-gerencia.html#rectificarCorozal'},
       {key:'management-adjustments',owner:'gerencia',table:'ajustes_gerencia_solicitudes',title:'Ajustes de caja y cartera por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
       {key:'supplier-adjustments',owner:'gerencia',table:'proveedores_ajustes_solicitudes',title:'Ajustes de proveedores por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
-      {key:'bank-supplier-payments',owner:'gerencia',table:'banco_creditek_pagos_proveedor',title:'Pagos a proveedores por autorizar en Banco Creditek',path:'/creditek/erp/banco-creditek.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'bank-supplier-payments',owner:'gerencia',table:'banco_creditek_pagos_proveedor',title:'Pagos a proveedores por autorizar en Tesorería',path:'/creditek/erp/aliados-tesoreria.html#supplierBankApprovalSection',filters:[['eq','estado','pendiente']]},
     );
     if (financialAccess) sources.push(
       {key:'financial-approval',owner:'gerencia',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general#pendientes',filters:[['eq','status','pendiente_aprobacion']]},

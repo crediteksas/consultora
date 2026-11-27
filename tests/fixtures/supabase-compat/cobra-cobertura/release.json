@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Combined Cartera access, store-debt isolation, provider-store provenance and independent portfolio costs; fictional PostgreSQL/Auth/PostgREST upgrade and rebuild. Historical evidence remains pinned independently; no production outcome inferred.",
+  "migration_sha256": {
+    "supabase/migrations/20261126012515_cobra_krediya_cut_history.sql": "33e8674a20415126c38431937b31317ad0b2a73c58449b1dc20419e53f5d813b",
+    "supabase/migrations/20261126013403_cobra_krediya_collection_operation_link.sql": "6f69b6a7f5e7f1026230267c7093563e79c3df259b39576d53e487932fc6d021",
+    "supabase/migrations/20261127020616_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+    "supabase/migrations/20261127025816_cartera_dedicated_session_access.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
+    "supabase/migrations/20261127195036_cartera_independiente_confirmacion_tienda.sql": "c7a8261c4b93e6f5bae74220f6b2921bb53ddd229af2c755135430a41b5e5d0b",
+    "supabase/migrations/20261127203343_cobra_corte_tienda_fuente.sql": "f1fa932667291ee30213938351e2871a5b5fe6d3f8d6cb008644034f90366b7b",
+    "supabase/migrations/20261127212751_cobra_costos_historicos.sql": "0073c11c50a6ad995c4621bff8508ae83f17f2ee8939e31230db8d94577d7230"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-cartera-access.test.mjs",
+      "sha256": "0b9b5f2e1149c6c07b0fa52d8980deedacb816939e4d14e34d137fb2b35eae8c"
+    },
+    {
+      "path": "tests/security/supabase-compatibility-cartera-independiente.test.mjs",
+      "sha256": "b0f6307dfbfd7cc187c2dfd5565c750e4c29f2c437b1d3ec5bbb84fe3d3db546"
+    },
+    {
+      "path": "tests/security/supabase-compatibility-krediya-tienda-fuente.test.mjs",
+      "sha256": "c0c6a6bfd34c0a7ef717f511d52017f7ffd8f61c312b66db735bbb60c2f183d0"
+    },
+    {
+      "path": "tests/security/supabase-compatibility-cobra-cobertura.test.mjs",
+      "sha256": "1d4767ecaaf13f52f56e0e1c557cd56418e1d0ae486f776d54f5ce3ea2750f4a"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "supersedes": [
+    {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/release.json",
+      "sha256": "34d4dffa894d68abbb09f8f6e39e366195e223b70055128ade2bfb7cd94771ab"
+    }
+  ],
+  "prior_combined": {
+    "path": "tests/fixtures/supabase-compat/cartera-access/release.json",
+    "sha256": "33fefa1e941859daad7c37063cc1cd08eb8e000e2721540b774b77002e79dc60"
+  },
+  "source_sha256": {
+    "supabase/migrations/20261127212751_cobra_costos_historicos.sql": "0073c11c50a6ad995c4621bff8508ae83f17f2ee8939e31230db8d94577d7230",
+    "releases/cobra-cobertura-historica-20261127/native-http-proof.py": "028de91571e022ff94bab046d854888c8b3d7bc8272cb09ef05232dc3782d07c",
+    "releases/cobra-cobertura-historica-20261127/local-test-runtime.py": "f4fc2fd8729771bc6a76a73043040e8c231a8c6666e1edc8b0bc856c587aab7b",
+    "releases/cobra-cobertura-historica-20261127/fixture/auth-baseline.sql": "3e07cda327763e5212fdc9b875beccacc6a705e2e1f63e9893f33d9b0a8f7e74",
+    "scripts/supabase-compat/catalog-query.sql": "19ef9ae8c2503bf14e64327d89d040961b2ce93fa3fe75a3f10f8533092ee48e",
+    "tests/erp/cobra-cobertura-historica.test.mjs": "89fa45b0eb76ade6a3dce6d31b9ed2cd6ff79ae168aa5562824c8ee33404f1db",
+    "tests/erp/cobra-cobertura-domain.test.mjs": "17fb9581a1461f82a2901f99fd3687c620d4ac90134e7c27446d11e6c42bcfec",
+    "tests/security/supabase-compatibility-cobra-cobertura.test.mjs": "1d4767ecaaf13f52f56e0e1c557cd56418e1d0ae486f776d54f5ce3ea2750f4a"
+  },
+  "native_results": {
+    "upgrade": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/http-upgrade.json",
+      "sha256": "5e17e695e0b0051a8ff0de62c75d22a227e30d2d55c64c83bcfac101a15d2f56"
+    },
+    "rebuild": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/http-rebuild.json",
+      "sha256": "a41a721c50e9193f3b761b1b7a1af9f16e8977d335f1ce420895510b9144b98a"
+    }
+  },
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/upgrade-before.json",
+      "sha256": "fa1cbc5f296dd30c559aa870bf98d7113f86a4c3bc5d5bf70a70d82413692f82"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/upgrade-after.json",
+      "sha256": "cd4b39f65274382449b91ae8c58656cc0c296d039a59f62afd55a88ace053a4d"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/upgrade-contract.json",
+      "sha256": "414fac23e71bc43e5045246c17042c0ec2939b64352613096c480830baade0af"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/upgrade-created.json",
+      "sha256": "cb4edd8026f1263a690e60af2e61045b5d9672e328b4ca8918c781dd94fd2c02"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/rebuild-before.json",
+      "sha256": "7f42541e7449c4d4237c5e07cc7aa266f7284742a87c8fffd79da9bee6ff4751"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/rebuild-after.json",
+      "sha256": "3daeab0506ff052374e94ddc8216daef2ded25b8500ec2c0d218020a42466dde"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/rebuild-contract.json",
+      "sha256": "414fac23e71bc43e5045246c17042c0ec2939b64352613096c480830baade0af"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/rebuild-created.json",
+      "sha256": "cb4edd8026f1263a690e60af2e61045b5d9672e328b4ca8918c781dd94fd2c02"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 7 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+# Segunda revisión de controles: costos históricos de cobertura
+
+**Veredicto:** en el código que enviaste no encuentro ningún P0 ni un P1 de código concreto. Los tres P1 de la revisión anterior quedan resueltos. Para publicar sí veo una condición de despliegue de nivel P1, que explico abajo. Revisé solo lectura del texto: no ejecuté pruebas ni consulté la base.
+
+## Estado de P1-A, P1-B y P1-C
+
+**P1-A (lecturas con FORCE RLS): resuelto, aunque de otra forma.**
+- No se agregó `FORCE` a las tablas nuevas.
+- En su lugar, `cobra_cobertura_calcular()` exige que el dueño de la función tenga `rolbypassrls` o `rolsuper` (`current_user` dentro de una función `security definer`). Un rol así se salta incluso la RLS forzada. Si el dueño no tiene esos permisos, la función se detiene con un error y no devuelve totales parciales en silencio.
+- La prueba `fiction_owner` cubre el rechazo. Es una solución válida, pero distinta a la que pedí.
+
+**P1-B (no omitir usos sin solicitud válida): resuelto en SQL.**
+- `live_costs` parte de los `execute` con `left join` a la solicitud, filtrando `kind='request'`, y agrupa por `coalesce(r.cohort_month,e.cohort_month)`.
+- Cuentan como `usos_sin_vinculo` los casos sin solicitud, sin operación fuente, con mes distinto o con operación revertida.
+- En el esquema real, `cohort_month` es `not null`, así que ninguna fila cae en un mes nulo.
+- La prueba "una ejecución sin solicitud válida…" lo cubre.
+
+**P1-C (exigir huella y fuente en las correcciones): resuelto.**
+- `source_sha256` es `not null` y valida 64 caracteres hexadecimales; `source_name` es `not null` con `btrim`.
+- La prueba solo cubre el caso nulo. Ver P2-5.
+
+## Condiciones antes de publicar
+
+1. **(P1 de despliegue) Dependencia de una migración "REVIEW ONLY".**
+   - La consulta lee `public.cobra_provision_actions` y `cobra_provision_fundings`, que crea `20261127020616_…_provision_review.sql`. Esa migración dice que necesita aprobación aparte.
+   - Si no está aplicada en producción, un `supabase db push` la aplicaría junto con esta. Eso crearía las tablas de provisión, daría `insert` a `authenticated` y dejaría el flujo de autorización activo.
+   - Si se excluye esa migración, la migración de cobertura igual se aplica, porque el cuerpo plpgsql no se valida al crearse. Pero `cobra_cobertura_mensual()` fallaría al primer uso.
+   - **Hay que confirmar con `supabase migration list`, contra producción, que `20261127020616` ya está aplicada (o decidir explícitamente qué hacer con ella) antes de publicar.**
+
+2. **El dueño de las funciones en producción debe tener BYPASSRLS.** Si no lo tiene, el sistema se detiene sin mostrar cifras: no es un riesgo de datos, pero la pantalla no funcionaría. Se confirma con `select rolbypassrls, rolsuper from pg_roles where rolname = 'postgres'` (o el dueño real de las funciones).
+
+3. **No puedo verificar si `unmatched > 0` anula el saldo en la interfaz.** El SQL no anula `provision_pesos` cuando hay costos sin vínculo; esa decisión depende de `coverageRows`. Las pruebas de dominio cubren `unallocated_prior` y `potential_duplicates`, pero no `unmatched`, `missing`, `reversals` ni `duplicates`. Si la regla acordada es que un costo sin vínculo bloquea el saldo, falta una prueba de dominio para eso. No la marco como P1 porque no tengo el código de dominio para confirmarlo.
+
+## P2 (no bloquean)
+
+1. **`posibles_duplicados` es muy amplio.** Cuenta cualquier `execute` de un crédito que tenga cualquier costo histórico activo, de cualquier tipo y mes. Un crédito con una cuota histórica y una cuota nueva legítima dejaría el saldo oculto, al igual que todo el acumulado posterior. Hoy la única salida es "corregir" un costo válido. Convendría acotar la regla (mismo tipo, cercanía de fechas o de monto) o tener un evento auditado de "revisado, no es duplicado".
+2. **El método de registro por defecto es engañoso.** `recording_method` vale `'user_session'` por defecto, pero ningún rol de sesión puede insertar: la carga solo la puede hacer el dueño de las tablas por SQL, y `recorded_by` es lo que declare quien carga. Sería mejor no tener valor por defecto o declararlo explícitamente en el script de carga.
+3. **Una corrección no puede reemplazar desde el mismo archivo.** Por `unique(source_sha256, source_row, kind)`, el reemplazo necesita otra fila u otro archivo. Es aceptable, pero conviene documentarlo.
+4. **El bloqueo de truncate de la tabla histórica no queda probado.** La prueba acepta como resultado válido el error de llave foránea, que salta antes que el trigger.
+5. **Faltan pruebas de formato en la corrección.** Solo se prueba el caso nulo; no hay prueba de huella mal formada ni de `source_name` en blanco.
+6. **Rendimiento.** `duplicadas` y `sin_vinculo` usan subconsultas correlacionadas sobre `sources`, sin límite propio (solo `historica` tiene tope de 10.000 filas).
+7. **`effective_date` no se valida.** Puede quedar antes del mes de cohorte o en el futuro.
+
+## Alcance
+
+La migración solo crea objetos en `kora_private` y la función `public.cobra_cobertura_mensual()`. Lee liquidaciones, operaciones, reversiones y provisiones, pero no las modifica ni cambia sus permisos. No toca ventas, utilidades ni tiendas, y la prueba de anulación comprueba que pagos, obligaciones y liquidaciones queden iguales. El script de carga de los datos ficticios no estaba en lo que enviaste, así que no lo revisé.
+
+**Siguiente paso:** confirma la condición 1 contra producción. Si la migración `20261127020616` ya está aplicada y el dueño tiene BYPASSRLS, no veo bloqueos de código para la carga puntual.

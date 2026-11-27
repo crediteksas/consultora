@@ -100,12 +100,12 @@
       "sha256": "26c1af4a00ba789ac0c0c3a6b870dbb25924e9372672695c45ea2af90d6bdfd5"
     },
     {
-      "path": "tests/fixtures/supabase-compat/cartera-access/release.json",
-      "sha256": "33fefa1e941859daad7c37063cc1cd08eb8e000e2721540b774b77002e79dc60"
-    },
-    {
       "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/release.json",
       "sha256": "e01291172b92895e82fc6ee00582d6ed05cc836831df6e2ef4f791c35150057d"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/cobra-cobertura/release.json",
+      "sha256": "a81e10c534e03282d8598865fb459e6c3d0522e0a776b65c99ed4c2ffcf797f0"
     }
   ],
   "upgrade": {

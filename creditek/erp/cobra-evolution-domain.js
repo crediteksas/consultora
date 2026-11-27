@@ -59,5 +59,18 @@ function cohortCosts(fundings,actions){
  for(const r of ledger.requests){const g=get(r.cohort_month);if(r.state==='authorized')g.reserved_cents+=r.amount_cents;if(r.state==='executed')g.spent_cents+=r.executed_cents;let left=r.state==='executed'?r.executed_cents:r.state==='authorized'?r.amount_cents:0;for(const a of r.allocations){const used=Math.min(left,a.cents);left-=used;if(fundings.find(f=>f.id===a.fund_id).source_month!==r.cohort_month)g.other_month_cents+=used;}}
  return [...groups.values()].sort((a,b)=>a.month.localeCompare(b.month)).map(g=>{requireTrue(['generated_cents','prior_used_source_cents','spent_cents','reserved_cents','other_month_cents'].every(k=>Number.isSafeInteger(g[k]))&&Number.isSafeInteger(g.spent_cents+g.reserved_cents),'Importe fuera de rango.');return {...g,tracked_exceeds_generated:g.has_source?g.spent_cents+g.reserved_cents>g.generated_cents:null,historical_target_unallocated:g.prior_used_source_cents>0};});
 }
-const api={cut,summary,compare,history,fundSummary,cohortCosts,day,uuid};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraEvolution=api;
+function coverageRows(report){
+ requireTrue(report?.version===1&&report.invalid_dates===0&&Array.isArray(report.months)&&Array.isArray(report.items),'Cruce incompleto.');
+ for(const item of report.items)requireTrue(item&&typeof item.credit==='string'&&item.credit.length>0&&month(item.month)&&['installments','cancellation'].includes(item.kind)&&integer(item.amount_pesos)&&item.amount_pesos>0&&item.amount_pesos<=90071992547409&&Number.isSafeInteger(item.source_row)&&item.source_row>0&&typeof item.source_name==='string'&&item.source_name.length>0&&(item.effective_date===null||day(item.effective_date)),'Detalle inválido.');
+ let total=0,complete=true;const seen=new Set();
+ return [...report.months].sort((a,b)=>String(a.month).localeCompare(String(b.month))).map(row=>{requireTrue(month(row.month)&&!seen.has(row.month),'Mes duplicado o inválido.');seen.add(row.month);
+  for(const key of ['installments_pesos','cancellations_pesos','new_uses_pesos','unallocated_prior_pesos','missing','reversals','duplicates','unmatched','events','potential_duplicates'])requireTrue(integer(row[key])&&row[key]<=90071992547409,'Importe o dato inválido.');
+  const prov=row.provision_pesos;requireTrue(prov===null||(Number.isSafeInteger(prov)&&Math.abs(prov)<=90071992547409),'Provisión inválida.');
+  const spent=row.installments_pesos+row.cancellations_pesos+row.new_uses_pesos;requireTrue(Number.isSafeInteger(spent)&&spent<=90071992547409,'Importe fuera de rango.');
+  const ready=prov!==null&&!row.missing&&!row.reversals&&!row.duplicates&&!row.unmatched&&!row.unallocated_prior_pesos&&!row.potential_duplicates;const balance=ready?prov-spent:null;
+  if(balance===null)complete=false;else if(complete){total+=balance;requireTrue(Number.isSafeInteger(total)&&Math.abs(total)<=90071992547409,'Acumulado fuera de rango.');}
+  return {...row,spent_pesos:spent,balance_pesos:balance,accumulated_pesos:complete?total:null};
+ });
+}
+const api={cut,summary,compare,history,fundSummary,cohortCosts,coverageRows,day,uuid};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraEvolution=api;
 })(typeof window!=='undefined'?window:globalThis);

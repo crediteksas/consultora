@@ -1,0 +1,40 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 7 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+# Veredicto: no encuentro un P0 concreto, pero queda un P1 condicional
+
+Lo que sigue sale solo de leer el SQL y el JS que pegaste. No ejecuté nada ni tuve acceso a datos reales, así que no doy por hecho que los tests pasen.
+
+## P1 condicional: si el cálculo de cobertura es lento, se cae el libro de provisiones
+
+En `cobra_provision_book`:
+```sql
+begin coverage=public.cobra_cobertura_mensual();
+exception when insufficient_privilege then coverage=null;
+          when others then coverage=null;coverage_error=true;end;
+```
+- En PL/pgSQL, `OTHERS` **no captura `query_canceled` (57014)**, que es justo el error que lanza `statement_timeout`.
+- El timeout cuenta para toda la llamada RPC. Aunque se capturara, el libro ya no tendría tiempo de responder.
+- `cobra_cobertura_calcular` recorre **todas** las `liquidation_operations` de Krediya aprobadas y congeladas en cada llamada. El tope de 10.000 solo aplica a `cobra_cobertura_historica`, no a esas operaciones.
+- Para un usuario autorizado, la duración del libro pasa a ser libro + cobertura. Si la cobertura se acerca al timeout del rol `authenticated`, **el libro existente falla entero** con un error que no se puede capturar. Eso contradice la promesa de "errores reales se identifican sin romper libro".
+
+Es condicional porque depende del volumen real, que no puedo ver. Para cerrarlo hay dos caminos; tú decides cuál:
+1. **Medir antes de desplegar:** correr `EXPLAIN ANALYZE` del cuerpo de `sources`/`entries` con volumen de producción, dentro de una transacción de solo lectura, y comparar contra el `statement_timeout` de `authenticated`.
+2. **Desacoplar, que es el cambio más simple:** que `coverageBook()` llame directo a `client.rpc('cobra_cobertura_mensual')` en vez de colgarse de `fundBook()`. Esa función ya tiene `grant execute ... to authenticated` y hace sus propias verificaciones, así que pasar por el libro no agrega seguridad, solo acopla los dos. Ojo: esto contradice el comentario de la migración ("Use the existing, independently authorized Cartera route"). Si la razón de ese diseño es la autorización de la ruta en la app, confírmalo antes de cambiarlo.
+
+## P2: no bloquean, pero conviene saberlos
+
+1. **Un fallo de configuración se ve igual que "no autorizado".** `cobra_coverage_rls_owner_invalid` y cualquier "permission denied" del dueño sobre una tabla usan el código 42501. El libro los trata como `insufficient_privilege` y devuelve la forma antigua, sin `coverage_status`. Para el usuario no hay riesgo: `coverageBook()` lanza "No fue posible verificar el cruce mensual" y no muestra cifras. El costo es operativo: un error de despliegue no se distingue de una falta de permiso. Si en el proyecto `postgres` no tiene `rolbypassrls`, la función nace muerta sin que nada lo avise.
+2. **Auditoría de quién registra.** No hay RPC de inserción, así que los registros entran por SQL privilegiado. `recorded_by` lo escribe quien inserta, sin ligarse a `auth.uid()`, y `recording_method` queda por defecto en `'user_session'` aunque no hubo sesión de usuario. El trigger sí exige que la persona esté en la lista autorizada y activa, pero la etiqueta del método puede ser falsa.
+3. **Puede aparecer un mes vacío.** En `live_costs`, un `execute` sin padre y sin `cohort_month` produce una fila con `month: null`. El JS no valida los campos de `months[]`.
+4. **El JS no distingue error de no autorizado.** `coverageBook()` lanza el mismo error en los dos casos y no lee `coverage_status:'error'`. Si la UI llama `coverageBook()` para todos los operadores de calidad, los no autorizados ven un error en vez de un panel oculto. Es un tema de interfaz, no de seguridad.
+5. **Dependencia de `cobra_quality_operator()`.** Dentro de `cobra_cobertura_mensual`, que es `security definer`, se evalúa con `current_user = postgres`. Si esa función usa `auth.uid()` está bien; si usa `current_user` o roles, se rompe. No tengo su código para confirmarlo.
+6. **Mensaje engañoso.** `exception when invalid_text_representation` en `calcular` también captura un `sub` de JWT mal formado en `auth.uid()` y lo reporta como `cobra_coverage_date_incomplete`.
+
+## Lo que sí veo correcto
+
+- **Respuesta para no autorizados:** el 42501 se captura y devuelve `{fundings, actions}` sin claves nuevas.
+- **Restricción de sesiones:** `coalesce(cartera_principal_restringido(), true)` se aplica en las dos capas. El preflight aborta si ya hay contrato o principales. Una sesión restringida que llegue al libro cae en 42501 y recibe la forma antigua.
+- **Concurrencia:** el lock consultivo por crédito es compartido entre altas y correcciones. Bajo read committed, el trigger (volátil) toma un snapshot nuevo después del lock, así que ve los registros que otra transacción ya confirmó. Las filas anteriores del mismo INSERT múltiple también son visibles en un BEFORE ROW.
+- **Rendimiento ya corregido:** `source_counts` y `active_credit_ids` evitan las subconsultas correlacionadas, y `sources` se materializa porque se usa varias veces.
+- **Preflight y postflight del libro:** el md5 y el ACL hacen que la migración falle cerrada. Falta comprobar, ya en producción, que `42d7cdce…` coincide con `pg_get_functiondef` real. Si no coincide, la migración aborta sin daño.
+
+En resumen: si mides el volumen o desacoplas la llamada para cerrar el P1, no veo otro bloqueo P0/P1 en este código.

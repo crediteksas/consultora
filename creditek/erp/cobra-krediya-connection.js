@@ -182,6 +182,7 @@
 
   async function fundCapabilities(){const ctx=await context();await permission(ctx);return {authorizer:await query(ctx,()=>client.rpc('cobra_provision_authorizer'))===true};}
   async function fundBook(){const ctx=await context();await permission(ctx);const book=await query(ctx,()=>client.rpc('cobra_provision_book'));if(!book||!Array.isArray(book.fundings)||!Array.isArray(book.actions)||book.fundings.length>10000||book.actions.length>10000||book.fundings.some(f=>!uuid(f.id))||book.actions.some(a=>!uuid(a.id)||!Number.isSafeInteger(a.event_no)||a.event_no<=0))throw Error('Libro de provisiones incompleto.');return book;}
+  async function coverageBook(){const book=await fundBook();const result=book.coverage;if(result?.version!==1||result.invalid_dates!==0||!Array.isArray(result.months)||!Array.isArray(result.items)||result.months.length>1000||result.items.length>10000)throw Error('No fue posible verificar el cruce mensual.');return result;}
   async function fundSource(month){if(!/^\d{4}-(0[1-9]|1[0-2])-01$/.test(month))throw Error('Mes inválido.');const ctx=await context();await permission(ctx);const result=await query(ctx,()=>client.rpc('cobra_provision_source',{p_month:month}));
    if(!result||!Number.isSafeInteger(result.count)||result.count<0||!Number.isSafeInteger(result.generated_cents)||!Number.isSafeInteger(result.negative_count)||result.negative_count<0||(result.count>0&&!/^[a-f0-9]{64}$/.test(result.digest)))throw Error('Fuente de provisión incompleta.');return result;}
   async function customerHistory(operation){if(!uuid(operation))throw Error('Crédito inválido.');const ctx=await context();await permission(ctx);const result=await query(ctx,()=>client.rpc('cobra_krediya_history_cuts',{p_operation_id:operation}));if(result?.schema_version!==1||result.operation_id!==operation||result.automatic_decision!==false||result.official_quality!==false||!Array.isArray(result.cuts))throw Error('Historial no verificable.');return result;}
@@ -215,7 +216,7 @@
     }
    });
   }catch(error){if(!submitted)error.resetIntent=true;throw error;}}
-  return Object.freeze({save,recover,discard,listCuts,loadCut,history,fundCapabilities,fundBook,fundSource,customerHistory,recoverFund,discardFund,saveFund,async capabilities(){const ctx=await context();const operator=await query(ctx,()=>client.rpc('cobra_quality_operator'));const importer=operator===true?await query(ctx,()=>client.rpc('cobra_quality_importer')):false;return {operator:operator===true,importer:importer===true};},dispose(){disposed=true;invalidate();uncertainIntents.clear();subscription.unsubscribe();}});
+  return Object.freeze({save,recover,discard,listCuts,loadCut,history,fundCapabilities,fundBook,coverageBook,fundSource,customerHistory,recoverFund,discardFund,saveFund,async capabilities(){const ctx=await context();const operator=await query(ctx,()=>client.rpc('cobra_quality_operator'));const importer=operator===true?await query(ctx,()=>client.rpc('cobra_quality_importer')):false;return {operator:operator===true,importer:importer===true};},dispose(){disposed=true;invalidate();uncertainIntents.clear();subscription.unsubscribe();}});
  }
  const api={create,CUT_COLUMNS,EVENT_COLUMNS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraQualityConnection=api;
 })(typeof window!=='undefined'?window:globalThis);

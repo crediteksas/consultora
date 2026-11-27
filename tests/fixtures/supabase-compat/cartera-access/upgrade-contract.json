@@ -4254,7 +4254,7 @@
       "identity": "",
       "config_md5": "033ede72622928c856582b307dccfe4b",
       "routine_kind": "f",
-      "definition_md5": "8c27a5975628606baa2093c610f3474c",
+      "definition_md5": "9bed256af7305c4752bdde1a865bcb6e",
       "security_definer": true,
       "kind": "function",
       "column_acls": {},

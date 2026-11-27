@@ -101,7 +101,7 @@
     },
     {
       "path": "tests/fixtures/supabase-compat/cartera-access/release.json",
-      "sha256": "8f05c76d8f706e335354d0fc9487ced8f5647f30b9c391c2f5b5742873d733ce"
+      "sha256": "aeecfae4ad42d411e4585a6a265e544ebf1e9ffb1217278fdd0ff9f2006c1fa4"
     },
     {
       "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/release.json",

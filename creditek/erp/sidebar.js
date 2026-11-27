@@ -1374,7 +1374,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         wireInteractions(pageClient);
       }
       completeBootStage('mount');
-      if (perfil.rol === 'admin_tienda') {
+      // La gestión de Cartera es independiente del trabajo en una tienda.
+      const carteraIndependiente = perfil.es_gestor_cartera === true
+        && location.pathname === '/creditek/erp/creditos-cartera.html';
+      if (perfil.rol === 'admin_tienda' && !carteraIndependiente) {
         await withBootTimeout(new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = '/creditek/erp/confirmacion-deuda.js?v=1.0.1';

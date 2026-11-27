@@ -10,7 +10,7 @@ const dir='tests/fixtures/supabase-compat/cartera-access';
 test('la evidencia conserva la prueba anterior y distingue la prueba nueva',()=>{
  const release=JSON.parse(read(dir+'/release.json'));
  for(const scenario of ['upgrade','rebuild']){
-  const prior=release.prior_native_receipts[scenario], current=release.native_receipts[scenario];
+  const prior=release.prior_native_receipts[scenario], current=release.prior_independent_receipts[scenario];
   assert.equal(sha(read(prior.path)),prior.sha256);assert.equal(JSON.parse(read(prior.path)).passed,true);
   assert.equal(sha(read(current.path)),current.sha256);const result=JSON.parse(read(current.path));
   assert.equal(result.passed,true);assert.equal(result.scenario,scenario);assert.equal(result.production_operations,0);

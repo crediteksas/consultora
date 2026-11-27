@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "scenario": "rebuild",
+  "checks": [
+    "fictional Auth user created 0",
+    "fictional Auth user created 1",
+    "dedicated Auth role assigned before first login",
+    "before phase has exact 197 public table names",
+    "new bootstrap absent in already-running API before install",
+    "fixture pin resolved public.kora_confirmacion_deuda_pre_request()",
+    "fixture pin resolved kora_private.exigir_confirmacion_deuda_api()",
+    "fixture pin resolved kora_private.cartera_api_pre_request()",
+    "fixture pin resolved public.cobra_quality_operator()",
+    "independent store-debt guard installed",
+    "R6 installed without enabling its contract",
+    "dedicated mode remains safely closed on guard change",
+    "authorized store manager can open independent KrediYA",
+    "store debt still blocks ordinary store writes",
+    "store account without portfolio permission gets no exception"
+  ],
+  "production_operations": 0,
+  "external_sends": 0,
+  "fixture_scope": "197 fictional public tables, NOT a production clone; dedicated role remains disabled because its guard pin differs",
+  "runtime": "official PostgreSQL/Auth/PostgREST on an internal network, no host ports",
+  "catalog_query_sha256": "19ef9ae8c2503bf14e64327d89d040961b2ce93fa3fe75a3f10f8533092ee48e",
+  "source_sha256": {
+    "native-independent-proof.py": "351a4cecda16d73478e5586fdc95c0ff6a2930f2305eaaaa367279a6ad2935e5",
+    "cartera-r6-native-fixture.sql": "a5a7979c163718c9f0d0bcd01936318ffc708afded2fd60b541c3504a6dd0ca2",
+    "20261127020616_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+    "scope-full.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
+    "20261127195036_cartera_independiente_confirmacion_tienda.sql": "c7a8261c4b93e6f5bae74220f6b2921bb53ddd229af2c755135430a41b5e5d0b",
+    "local-test-runtime.py": "a98c863b49fe30076c808fe468f7361110e46adb9b8b2bf8f0237c47ecd4c025"
+  },
+  "fixture_adjustments": "Replaced only preflight pins and ACL literal with fictional fixture values; production was not modified."
+}

@@ -30,7 +30,7 @@
     "20261127020616_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
     "scope-full.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
     "20261127195036_cartera_independiente_confirmacion_tienda.sql": "c7a8261c4b93e6f5bae74220f6b2921bb53ddd229af2c755135430a41b5e5d0b",
-    "20261127203138_cobra_corte_tienda_fuente.sql": "f1fa932667291ee30213938351e2871a5b5fe6d3f8d6cb008644034f90366b7b",
+    "20261127203343_cobra_corte_tienda_fuente.sql": "f1fa932667291ee30213938351e2871a5b5fe6d3f8d6cb008644034f90366b7b",
     "local-test-runtime.py": "a98c863b49fe30076c808fe468f7361110e46adb9b8b2bf8f0237c47ecd4c025"
   },
   "fixture_adjustments": "Replaced only preflight pins and ACL literal with fictional fixture values; production was not modified."

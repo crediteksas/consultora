@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 const read=p=>readFileSync(p,'utf8');
-const migration=read('supabase/migrations/20261127203138_cobra_corte_tienda_fuente.sql');
+const migration=read('supabase/migrations/20261127203343_cobra_corte_tienda_fuente.sql');
 const base=read('releases/cobra-krediya-20261125/db-tests/fixture.sql')+read('tests/fixtures/supabase-compat/cobra-krediya/setup.sql');
 const user='11111111-1111-4111-8111-111111111111';
 const row={contract:'fiction001',document:'111001',customer:'Ana Ejemplo',store:'Tienda Ficticia B',created:'2026-10-01',financed_cents:40000000,fee_cents:5000000,total_installments:12,frequency:15,cycled:3,paid:1,overdue:2,contract_status:'signed_approved'};

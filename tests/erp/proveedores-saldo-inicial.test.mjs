@@ -32,10 +32,12 @@ test('PDF nuevo va a soportes privado y conserva exactamente el monto; opcionale
   assert.equal(estados.length, 2);
 });
 
-test('resolver mantiene bucket histórico y usa privado solo para el prefijo nuevo', () => {
+test('resolver abre soportes históricos y actuales en sus depósitos privados', () => {
   for (const path of ['saldos-iniciales-proveedores/antiguo.jpg','pagos-proveedores/antiguo.png','compras/antiguo.jpg']) {
-    assert.deepEqual(domain.resolverSoporte(path), {bucket:'productos-fotos',path});
+    assert.deepEqual(domain.resolverSoporte(path), {bucket:'proveedores-soportes-privados',path});
   }
+  const producto = 'canonicas/foto-producto';
+  assert.deepEqual(domain.resolverSoporte(producto), {bucket:'productos-fotos',path:producto});
   const path = 'proveedores/saldos-iniciales/nuevo.pdf';
   assert.deepEqual(domain.resolverSoporte(path), {bucket:'soportes',path});
   const pago = 'proveedores/pagos/nuevo.pdf';
@@ -164,7 +166,7 @@ test('no inventa éxito sin confirmación y no repite un registro ya confirmado'
 
 test('formulario usa flujo privado, error inline persistente y capas oficiales KORA', async () => {
   const html = await readFile(new URL('../../creditek/erp/proveedores.html',import.meta.url),'utf8');
-  assert.match(html,/proveedores-saldo-inicial\.js\?v=1\.0\.0/);
+  assert.match(html,/proveedores-saldo-inicial\.js\?v=1\.1\.0/);
   assert.match(html,/registroSaldoInicial\.registrar\(datos/);
   assert.match(html,/id="saldo-inicial-estado"[^>]*role="status"/);
   assert.match(html,/#modal-saldo-inicial\s*\{[^}]*--ctk-z-modal, 700/);

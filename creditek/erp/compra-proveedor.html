@@ -12,8 +12,7 @@
 
   INTEGRACIÓN — 3 puntos que Oscar ajusta al copiar al repo:
     1. Endpoint Supabase: mismo patrón que proveedores.html — usa window.SB o CREDITEK_ENV.
-    2. Bucket de soportes: por defecto usa 'productos-fotos' con subcarpeta 'compras/'.
-       Cambia BUCKET_SOPORTES abajo si tienes uno dedicado.
+    2. Los soportes de proveedores se guardan en un depósito privado con subcarpeta 'compras/'.
     3. Sidebar: descomenta la línea marcada al final si tienes /js/sidebar.js.
 -->
 <html data-creditek-visual="liquid-1" lang="es">
@@ -394,7 +393,7 @@
 // ============================================================
 // CONFIG
 // ============================================================
-const BUCKET_SOPORTES = 'productos-fotos';    // ajusta si tienes uno dedicado a facturas
+const BUCKET_SOPORTES = 'proveedores-soportes-privados';
 const SUBCARPETA_SOPORTES = 'compras/';
 const productoFoto = window.CreditekProductoFoto;
 

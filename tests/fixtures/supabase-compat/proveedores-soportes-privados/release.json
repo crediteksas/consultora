@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Reduced fictional PGlite upgrade/rebuild. Generic catalog excludes provider-owned storage policies; exact policy assertions and RLS tests are separately executed. Hosted owner/permissions require verification.",
+  "migration_sha256": {
+    "supabase/migrations/20261127114505_proveedores_soportes_privados.sql": "6d2fe59c32d9110cf8bf766c9a938871e18dd36048a67e52128eb6849719c597"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-proveedores-soportes-privados.test.mjs",
+      "sha256": "6e55bd675e54f82402e0fb082876abdf1e02ec357c101b304710401b5dafbb55"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/upgrade-before.json",
+      "sha256": "918948ea031aa467027c36724d789b61b5ec1c57e3dd11b044595113c2280885"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/upgrade-after.json",
+      "sha256": "918948ea031aa467027c36724d789b61b5ec1c57e3dd11b044595113c2280885"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/upgrade-contract.json",
+      "sha256": "9bed82cc510169d46970267bad19eef9b582a094e69856a4abc2907214e9965e"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/upgrade-created.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/rebuild-before.json",
+      "sha256": "79b9dc61f871c02b0fc18d70c1375c7e63799a81cd8f2a52e4493b9c2495cdb8"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/rebuild-after.json",
+      "sha256": "79b9dc61f871c02b0fc18d70c1375c7e63799a81cd8f2a52e4493b9c2495cdb8"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/rebuild-contract.json",
+      "sha256": "9bed82cc510169d46970267bad19eef9b582a094e69856a4abc2907214e9965e"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/rebuild-created.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    }
+  }
+}

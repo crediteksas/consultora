@@ -2,6 +2,7 @@
   'use strict';
 
   const BUCKET = 'soportes';
+  const BUCKET_PROVEEDORES = 'proveedores-soportes-privados';
   // El prefijo identifica el bucket sin alterar rutas de facturas históricas.
   const PREFIX = 'proveedores/saldos-iniciales/';
   const PREFIX_PAGOS = 'proveedores/pagos/';
@@ -53,7 +54,8 @@
 
   function resolverSoporte(path) {
     const ruta = String(path || '');
-    return { bucket: ruta.startsWith(PREFIX) || ruta.startsWith(PREFIX_PAGOS) ? BUCKET : 'productos-fotos', path };
+    const privadoProveedor = /^(compras|pagos-proveedores|saldos-iniciales-proveedores)\//.test(ruta);
+    return { bucket: privadoProveedor ? BUCKET_PROVEEDORES : ruta.startsWith(PREFIX) || ruta.startsWith(PREFIX_PAGOS) ? BUCKET : 'productos-fotos', path };
   }
 
   function crearRegistro({ sb, idempotencyKey = global.crypto.randomUUID(), timeoutMs = 45000 }) {

@@ -1,0 +1,63 @@
+{
+  "defaults": [],
+  "policies": [],
+  "triggers": [],
+  "functions": [
+    {
+      "acl": null,
+      "name": "es_central",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "13feadb3142ac347746709cc42c05bbf",
+      "security_definer": false
+    }
+  ],
+  "relations": [],
+  "role_config": [],
+  "schema_grants": [
+    {
+      "acl": "{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner}",
+      "owner": "pg_database_owner",
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        },
+        {
+          "grantee": "pg_database_owner",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "CREATE"
+        },
+        {
+          "grantee": "pg_database_owner",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "public"
+    }
+  ],
+  "server_version": "18.3"
+}

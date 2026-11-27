@@ -1,0 +1,5 @@
+{
+  "scope": "Emergency publication of exactly two screen read query fixes; no permissions, decisions, references, provider calls or database schema changes.",
+  "reviewException": "User explicitly approved publication without waiting for Claude after 8 passing tests. Claude rate limit resets at 16:40 America/Bogota.",
+  "approved": true
+}

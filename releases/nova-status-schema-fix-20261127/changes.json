@@ -1,0 +1,16 @@
+[
+  {
+    "path": "clientes/index.mjs",
+    "before": "9ce91a9deed4205bb374a621cc4bdd11187af9c4d932ebb6b4ba06264ce56785",
+    "after": "336e8f8ece49a0c582f0d7040a8c6763ebd3d266eb7736fdea3eeef87bb7de2c",
+    "old": "select=state,decision,summary,valid_until,updated_at,created_at&limit=2",
+    "new": "select=state,decision,summary,valid_until,updated_at&limit=2"
+  },
+  {
+    "path": "nova/index.mjs",
+    "before": "44b73f6023deb4885faf7e60f87a7207b6f0e2778964d44da3cefbe2ec995795",
+    "after": "bcbc1f0dd77d7d979112417a15349b42424729c13ffe83a3d3556b2caba482dd",
+    "old": "select=source_id,store_code,state,revision,decision,summary,valid_until,updated_at,created_at,source:",
+    "new": "select=source_id,store_code,state,revision,decision,summary,valid_until,updated_at,source:"
+  }
+]

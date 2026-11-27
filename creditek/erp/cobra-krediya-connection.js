@@ -164,6 +164,14 @@
     all.push(...batch);if(batch.length<100)return all.sort((a,b)=>b.cutoff.localeCompare(a.cutoff)||b.received_at.localeCompare(a.received_at));last=batch.at(-1).id;
    }throw Error('Demasiadas versiones. Reduce el alcance antes de continuar.');
   }
+  async function listAllCuts(){
+   const ctx=await context();await permission(ctx);const all=[];let last=null;
+   for(let page=0;page<100;page++){
+    const batch=await query(ctx,()=>{let q=client.from('cobra_krediya_cuts').select(CUT_COLUMNS).order('id').limit(100);return last?q.gt('id',last):q;});
+    if(!Array.isArray(batch)||batch.some(x=>!uuid(x.id)||!/^\d{4}-(0[1-9]|1[0-2])-01$/.test(x.cohort_month||''))||batch.some((x,i)=>i&&x.id<=batch[i-1].id)||batch.some(x=>last&&x.id<=last))throw Error('Lista de cortes incompleta.');
+    all.push(...batch);if(batch.length<100)return all;last=batch.at(-1).id;
+   }throw Error('Demasiados cortes para consultar el ranking completo.');
+  }
   async function loadCut(id){
    if(!uuid(id))throw Error('Corte inválido.');const ctx=await context();await permission(ctx);
    const cut=await query(ctx,()=>client.from('cobra_krediya_cuts').select(CUT_COLUMNS+',observations').eq('id',id).single());
@@ -216,7 +224,7 @@
     }
    });
   }catch(error){if(!submitted)error.resetIntent=true;throw error;}}
-  return Object.freeze({save,recover,discard,listCuts,loadCut,history,fundCapabilities,fundBook,coverageBook,fundSource,customerHistory,recoverFund,discardFund,saveFund,async capabilities(){const ctx=await context();const operator=await query(ctx,()=>client.rpc('cobra_quality_operator'));const importer=operator===true?await query(ctx,()=>client.rpc('cobra_quality_importer')):false;return {operator:operator===true,importer:importer===true};},dispose(){disposed=true;invalidate();uncertainIntents.clear();subscription.unsubscribe();}});
+  return Object.freeze({save,recover,discard,listCuts,listAllCuts,loadCut,history,fundCapabilities,fundBook,coverageBook,fundSource,customerHistory,recoverFund,discardFund,saveFund,async capabilities(){const ctx=await context();const operator=await query(ctx,()=>client.rpc('cobra_quality_operator'));const importer=operator===true?await query(ctx,()=>client.rpc('cobra_quality_importer')):false;return {operator:operator===true,importer:importer===true};},dispose(){disposed=true;invalidate();uncertainIntents.clear();subscription.unsubscribe();}});
  }
  const api={create,CUT_COLUMNS,EVENT_COLUMNS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraQualityConnection=api;
 })(typeof window!=='undefined'?window:globalThis);

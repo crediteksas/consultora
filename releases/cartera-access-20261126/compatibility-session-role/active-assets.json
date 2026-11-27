@@ -12,28 +12,28 @@
     "sha256": "e165fb55270cf29f5a8e85ad49646837c4736b508bb83dd730318ff5bdff5e2d"
   },
   "creditek/erp/cobra-krediya-connection.js": {
-    "source": "releases/cobra-cobertura-historica-20261127/candidate/cobra-krediya-connection.js",
-    "sha256": "f9ffa82c14e18fde18f0ff9b0216cdc135508fe6c2a58cea8ea2cc5f262b63c1"
+    "source": "releases/cartera-ranking-acumulado-20261127/candidate/cobra-krediya-connection.js",
+    "sha256": "a8c5befc2953ad37c3ad2413a23275838d77b4abab95803acd473858780e5a9c"
   },
   "creditek/erp/creditos-cartera.html": {
-    "source": "releases/cobra-cobertura-historica-20261127/candidate/creditos-cartera.html",
-    "sha256": "e57fa76a5b77cc8684c12cdcd6c6860780b4e8f0042fd471b8f5542c6aa71477"
+    "source": "releases/cartera-ranking-acumulado-20261127/candidate/creditos-cartera.html",
+    "sha256": "8cb0c01fdb19c7b40550d691bbd660be84de7782dc6936af31482302509daf32"
   },
   "creditek/erp/cartera-presentacion.css": {
     "source": "releases/cartera-access-20261126/candidate/cartera-presentacion.css",
     "sha256": "35cd1c9bdf794c171d4a685177ba44def248d1b54c0020891c23652e8d5591e6"
   },
   "creditek/erp/cobra-evolution-ui.js": {
-    "source": "releases/cobra-cobertura-historica-20261127/candidate/cobra-evolution-ui.js",
-    "sha256": "df4d46437dc1cd029c0f0208d9647b9c25061d89bfffee1e0bd440a436817845"
+    "source": "releases/cartera-ranking-acumulado-20261127/candidate/cobra-evolution-ui.js",
+    "sha256": "7f86f7a878dc627978bb31991bf2c4220a40f706ac7f46e2f4680da5587dcc0b"
   },
   "creditek/erp/cobra-krediya-domain.js": {
     "source": "releases/cartera-access-20261126/candidate/cobra-krediya-domain.js",
     "sha256": "ad8a9e89996cf6dc20b2f7bad0cd8dfc395330ea72c817df9d48a445e83dd62e"
   },
   "creditek/erp/cobra-evolution-domain.js": {
-    "source": "releases/cobra-cobertura-historica-20261127/candidate/cobra-evolution-domain.js",
-    "sha256": "b2fa148b4f9e6ce678987af57186eafaf89678b233964d959e18f94d4d8abc02"
+    "source": "releases/cartera-ranking-acumulado-20261127/candidate/cobra-evolution-domain.js",
+    "sha256": "f44be91b613965d9d232d8cc34a6f7d7ede7241ea516451bc584a77e69645b4a"
   },
   "creditek/erp/creditos-cartera-app.js": {
     "source": "releases/cartera-access-20261126/candidate/creditos-cartera-app.js",

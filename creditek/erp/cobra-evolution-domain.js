@@ -72,5 +72,29 @@ function coverageRows(report){
   return {...row,spent_pesos:spent,balance_pesos:balance,accumulated_pesos:complete?total:null};
  });
 }
-const api={cut,summary,compare,history,fundSummary,cohortCosts,coverageRows,day,uuid};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraEvolution=api;
+function storeRanking(cuts,report,asOf,book={fundings:[],actions:[]}){
+ requireTrue(Array.isArray(cuts)&&cuts.length<=10000&&day(asOf),'Información de cortes incompleta.');
+ coverageRows(report);cuts.forEach(cut);
+ requireTrue(new Set(cuts.map(c=>c.id)).size===cuts.length,'Hay cortes duplicados.');
+ const byMonth=new Map();for(const c of cuts){if(c.cutoff>asOf)continue;if(!byMonth.has(c.cohort_month))byMonth.set(c.cohort_month,[]);byMonth.get(c.cohort_month).push(c);}
+ const groups=new Map(),contracts=new Map(),operations=new Map(),historical=new Set();
+ const group=name=>{const key=name.trim().replace(/\s+/g,' ').toLocaleUpperCase('es');if(!groups.has(key))groups.set(key,{store:name.trim(),credits:[],unknown:[],conflicts:0,cost_cents:0,cost_events:0,months:new Set()});return groups.get(key);};
+ const latest=[];
+ for(const [month,versions] of byMonth){
+  versions.sort((a,b)=>b.cutoff.localeCompare(a.cutoff)||(b.received_at||'').localeCompare(a.received_at||'')||b.id.localeCompare(a.id));
+  const current=versions[0];requireTrue(!versions.some((c,i)=>i>0&&c.cutoff===current.cutoff&&c.payload_sha256!==current.payload_sha256),'Hay dos versiones distintas del mismo corte; revisa antes de generar el ranking.');
+  latest.push({month,cutoff:current.cutoff});const present=new Set(current.observations.map(r=>r.operation_id)),seenOld=new Set(),older=new Map();
+  for(const previous of versions.slice(1))for(const row of previous.observations){if(!older.has(row.operation_id))older.set(row.operation_id,[]);older.get(row.operation_id).push(row);}
+  for(const row of current.observations){const key=row.contract.trim().toLocaleLowerCase('es');requireTrue(!contracts.has(key)&&!operations.has(row.operation_id),'Un crédito aparece en más de un mes; requiere revisión.');const g=group(row.store),contradiction=(older.get(row.operation_id)||[]).some(x=>x.store.trim().toLocaleUpperCase('es')!==row.store.trim().toLocaleUpperCase('es')||x.contract.trim().toLocaleLowerCase('es')!==key);g.credits.push({...row,cutoff:current.cutoff,month});g.months.add(month);if(contradiction)g.conflicts++;const ref={group:g,month,ambiguous:contradiction,credit:key};contracts.set(key,ref);operations.set(row.operation_id,ref);}
+  for(const old of versions.slice(1))for(const row of old.observations){if(present.has(row.operation_id)||seenOld.has(row.operation_id))continue;seenOld.add(row.operation_id);const g=group(row.store);g.unknown.push({contract:row.contract,customer:row.customer,cutoff:old.cutoff});g.months.add(month);}
+ }
+ let unassigned_cents=0,unassigned_events=0,possible_duplicates=0;
+ for(const item of report.items){const key=item.credit.trim().toLocaleLowerCase('es');historical.add(key);const match=contracts.get(key),amount=item.amount_pesos*100;if(!match||match.month!==item.month||match.ambiguous){unassigned_cents+=amount;unassigned_events++;continue;}const g=match.group;g.cost_cents+=amount;g.cost_events++;requireTrue(Number.isSafeInteger(g.cost_cents),'Costo fuera de rango.');}
+ const ledger=fundSummary(book.fundings,book.actions);for(const r of ledger.requests.filter(x=>x.state==='executed')){const match=operations.get(r.operation_id);if(!match||match.month!==r.cohort_month||match.ambiguous){unassigned_cents+=r.executed_cents;unassigned_events++;continue;}if(historical.has(match.credit)){possible_duplicates++;unassigned_cents+=r.executed_cents;unassigned_events++;continue;}match.group.cost_cents+=r.executed_cents;match.group.cost_events++;requireTrue(Number.isSafeInteger(match.group.cost_cents),'Costo fuera de rango.');}
+ requireTrue(Number.isSafeInteger(unassigned_cents),'Costo fuera de rango.');
+ const stores=[...groups.values()].map(g=>{const pastDue=g.credits.filter(x=>x.overdue>0),ratio=g.credits.length?pastDue.length/g.credits.length:null,oldest=g.credits.map(x=>x.cutoff).sort()[0]||null,stale=oldest&&(Date.parse(asOf)-Date.parse(oldest))/86400000>7;return {...g,months:[...g.months].sort(),months_overdue:[...new Set(pastDue.map(x=>x.month))].sort(),overdue:pastDue.length,arrears_cents:sum(pastDue,'arrears_cents'),ratio,assessment:ratio===null?'Sin dato actual':g.unknown.length||g.conflicts?'Datos incompletos':stale?'Corte desactualizado':g.credits.length<5?'Muestra pequeña':ratio>=0.5?'Alerta alta':ratio>0?'En seguimiento':'Al día en el corte',oldest_cutoff:oldest};});
+ stores.sort((a,b)=>(b.ratio??-1)-(a.ratio??-1)||b.arrears_cents-a.arrears_cents||a.store.localeCompare(b.store,'es'));
+ return {stores,latest:latest.sort((a,b)=>a.month.localeCompare(b.month)),unassigned_cents,unassigned_events,possible_duplicates};
+}
+const api={cut,summary,compare,history,fundSummary,cohortCosts,coverageRows,storeRanking,day,uuid};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraEvolution=api;
 })(typeof window!=='undefined'?window:globalThis);

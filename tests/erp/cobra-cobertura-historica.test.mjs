@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {PGlite} from '@electric-sql/pglite';
-const migration=readFileSync('supabase/migrations/20261127212751_cobra_costos_historicos.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261127222343_cobra_costos_historicos.sql','utf8');
 const setup=`create role anon;create role authenticated;create role service_role;create role kora_cartera_session;create role kora_cartera_operator;
 create schema kora_private;create schema kora_cartera_policy;create schema auth;
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;

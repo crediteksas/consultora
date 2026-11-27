@@ -5,7 +5,7 @@ import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {checkPermissionContract} from './check-permission-contract.mjs';
-const folder='tests/fixtures/supabase-compat/proveedores-soportes-privados',migration='supabase/migrations/20261127114505_proveedores_soportes_privados.sql',test='tests/security/supabase-compatibility-proveedores-soportes-privados.test.mjs';
+const folder='tests/fixtures/supabase-compat/proveedores-soportes-privados',migration='supabase/migrations/20261127120333_proveedores_soportes_privados.sql',test='tests/security/supabase-compatibility-proveedores-soportes-privados.test.mjs';
 const read=p=>readFileSync(p,'utf8'),sha=x=>createHash('sha256').update(x).digest('hex');
 async function capture(scenario){const db=await PGlite.create();try{
  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema storage;

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
-const migration=readFileSync('supabase/migrations/20261127114505_proveedores_soportes_privados.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261127120333_proveedores_soportes_privados.sql','utf8');
 test('central accede al soporte privado y la tienda no; la foto pública sigue visible y nuevas compras públicas se rechazan',async()=>{
  const db=await PGlite.create();
  try{

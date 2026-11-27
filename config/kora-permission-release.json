@@ -105,7 +105,7 @@
     },
     {
       "path": "tests/fixtures/supabase-compat/proveedores-soportes-privados/release.json",
-      "sha256": "441172ecd7b9fa23f87dded4276cdfcc7a9f3123bc6e276dda7e2982aac32208"
+      "sha256": "e01291172b92895e82fc6ee00582d6ed05cc836831df6e2ef4f791c35150057d"
     }
   ],
   "upgrade": {

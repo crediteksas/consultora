@@ -3,12 +3,12 @@
   "project": "kora",
   "scope": "Reduced fictional PGlite upgrade/rebuild. Generic catalog excludes provider-owned storage policies; exact policy assertions and RLS tests are separately executed. Hosted owner/permissions require verification.",
   "migration_sha256": {
-    "supabase/migrations/20261127114505_proveedores_soportes_privados.sql": "6d2fe59c32d9110cf8bf766c9a938871e18dd36048a67e52128eb6849719c597"
+    "supabase/migrations/20261127120333_proveedores_soportes_privados.sql": "6d2fe59c32d9110cf8bf766c9a938871e18dd36048a67e52128eb6849719c597"
   },
   "isolation_tests": [
     {
       "path": "tests/security/supabase-compatibility-proveedores-soportes-privados.test.mjs",
-      "sha256": "6e55bd675e54f82402e0fb082876abdf1e02ec357c101b304710401b5dafbb55"
+      "sha256": "dedb42432987b4c898905460260d0b7a6a7bd50736f374a5b4c3bb3f89504368"
     }
   ],
   "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",

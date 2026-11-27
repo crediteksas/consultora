@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-11-27T18:53:12.485006+00:00",
+  "codeMatches": true,
+  "configurationPreserved": true,
+  "routesPreserved": true,
+  "workers": {
+    "creditek-clientes": {
+      "modules": {
+        "form.html": "69a976a89c4579a6fdbd6d64f19587912e9d3e8b82a0692ce256e2e6e2924a79",
+        "index.mjs": "9ce91a9deed4205bb374a621cc4bdd11187af9c4d932ebb6b4ba06264ce56785"
+      },
+      "versions": [
+        {
+          "version_id": "c18a7e7b-2b29-4fb1-a1ee-c6d597f58429",
+          "percentage": 100
+        }
+      ]
+    },
+    "creditek-nova": {
+      "modules": {
+        "index.mjs": "44b73f6023deb4885faf7e60f87a7207b6f0e2778964d44da3cefbe2ec995795"
+      },
+      "versions": [
+        {
+          "version_id": "8aa0cd4b-2236-45a8-a97a-464b9ca8a322",
+          "percentage": 100
+        }
+      ]
+    }
+  }
+}

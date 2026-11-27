@@ -1,0 +1,46 @@
+{
+  "at": "2026-11-27T18:56:27.226392+00:00",
+  "implementationCommit": "7f3b08c0",
+  "status": "PUBLISHED_AND_VERIFIED",
+  "production": {
+    "creditek-clientes": "b1191ccf-ddc2-45f0-bd5a-1002e8c42d63",
+    "creditek-nova": "b306927b-456d-4f67-892f-8c04e33f32d0"
+  },
+  "tests": {
+    "passed": 8,
+    "failed": 0,
+    "baselineFailuresReproduced": 2,
+    "realSchemaInventoryValidated": true
+  },
+  "scope": {
+    "queryColumnRemovals": 2,
+    "schemaChanges": 0,
+    "permissionsChanged": false,
+    "decisionsChanged": false,
+    "referenceResponsesChanged": false,
+    "providerQueriesRepeated": false
+  },
+  "actualTargetCheck": {
+    "store": "Móvil Shopping",
+    "state": "correct",
+    "platformResultsSaved": 3,
+    "providerAttemptCounts": [
+      1,
+      1,
+      1
+    ],
+    "photosApproved": 3,
+    "referenceActions": [
+      "replace family after existing response timeout",
+      "replace personal because respondent reported family"
+    ],
+    "commercialProgressProjectionSucceeded": true,
+    "platformDetailsHidden": true
+  },
+  "access": {
+    "andreaReviewPermissionStillEnabled": true,
+    "currentMacAuthenticatedListNotVerified": true,
+    "reason": "Existing AURA page session did not restore NOVA login; saved credential rejected once, no further attempts made."
+  },
+  "postflight": "Worker hashes, settings, bindings, routes and schedules match approved release."
+}

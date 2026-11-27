@@ -1,0 +1,10 @@
+c.relispartition and c.relkind in('r','p') and n.nspname='realtime'
+ and c.oid in(select relid from pg_catalog.pg_partition_tree('realtime.messages'::regclass) where level>0)
+ and c.relowner=(select relowner from pg_class where oid='realtime.messages'::regclass)
+ and not exists(select 1 from aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a where a.grantee=0)
+ and not exists(select 1 from pg_attribute ca cross join lateral aclexplode(ca.attacl) a where ca.attrelid=c.oid and ca.attnum>0 and not ca.attisdropped and a.grantee=0)
+ and not exists(select 1 from aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) a where a.grantee=0 and a.privilege_type in('USAGE','CREATE'))
+ and case when to_regrole('kora_cartera_session') is null then true else
+ not has_schema_privilege('kora_cartera_session',n.oid,'USAGE') and not has_schema_privilege('kora_cartera_session',n.oid,'CREATE')
+ and not has_table_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+ and not has_any_column_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,REFERENCES') end

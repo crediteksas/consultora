@@ -1,0 +1,88 @@
+# Verdict: NOT APPROVED. Three B1/B2 code blockers and one small gate blocker remain.
+
+All of these are in the transmitted code and each fix is a few lines. Nothing here is a hosted-check item. I reviewed only the files in this message. I did not run anything, and I can't see `scope-full.sql`, `full-fixture.mjs` or the overlay fragment.
+
+## Blockers
+
+### X1 (B1/B2): a created session can leak untracked
+In `hosted-profile-proof.mjs` create mode, the session is pushed to `newlyCreated` only after `validate(...)` and the role check succeed. If either throws after `verifyOtp` returns a session, three things go wrong:
+- The server session exists but is never revoked.
+- It never appears in `pending-cleanup.json`.
+- The script reports "unresolved sessions retained" while one is actually missing from the record.
+
+Fix: track the session as soon as `verifyOtp` yields one, before any check that can throw.
+```js
+const{data,error}=await client.auth.verifyOtp({type:'email',token_hash:link.properties.hashed_token});
+let created=null;
+if(data?.session){let sid=null;try{sid=JSON.parse(Buffer.from(data.session.access_token.split('.')[1],'base64url')).session_id;}catch{}
+ created={session:data.session,i,uid:data.session.user?.id??target.id,sid,paths:[]};newlyCreated.push(created);}
+if(error||!data?.session||data.user?.id!==target.id)throw Error('session');
+const session=data.session,c=validate(session,target.id,created.sid);if(c.role!==results[i].role)throw Error('role');
+```
+If the catch can't revoke the session, the entry stays in pending with whatever `sid` was decoded, or `null`.
+
+### X2 (B2): the catch can overwrite earlier evidence in a directory this run doesn't own
+`privateOut` is set before the API-key fetch and before the new-directory check. The catch then writes `pending-cleanup.json` without `wx`. Two concrete cases:
+- **Create mode against an existing directory.** The `test output must be a new directory` error, or a key-fetch failure, overwrites a prior run's `pending-cleanup.json` with an empty list.
+- **Cleanup mode on a directory from a failed create.** There is no `private-receipt.json`, so the read throws. The catch then writes `pending:[]` over the create-mode pending file, deleting the only record of unresolved sessions and paths.
+
+Fix:
+- Use a separate `ownedOut`. Set it only after `mkdirSync` in create mode, or after the receipt checksum is verified in cleanup mode.
+- Write `pending-cleanup-<mode>-<Date.now()>.json` with `flag:'wx'`, mode `0o600`.
+- Never write when `ownedOut` is null. That is safe because no session can exist before `mkdirSync`.
+
+### X3 (B1): the cleanup catch can pair session UUIDs with the wrong users
+When the failure is `receipt` (checksum mismatch), the catch still reads the receipt and pairs `r.sessions[i].session_id` with `expectedScope.users[i].id` from the unverified scope file. Root's exact UUID/user verification would then look up a wrong pair, find nothing, and could read that as "already gone".
+
+Fix:
+- Store `user_id:target.id` in each `results[i]` entry of the receipt.
+- In the catch, emit pending entries only when the receipt checksum was verified, and take `user_id` from the receipt.
+
+### X4 (gate): residue of the dedicated role alone is undetected
+`catalog-query.sql` strips `cartera_coverage` whenever `cartera_operador_inicio()` is absent. The gate's installed check only looks at functions, policies and the policy schema. So a rollback or drift that leaves `kora_cartera_session` behind passes silently with `[]`. Roles are cluster-level and often survive function drops. That leftover state includes:
+- the role, settable by `authenticator`, and
+- any grants on storage/realtime, which are outside the old contract's application schemas.
+
+That role is exactly the JWT surface the restrictive `authenticated` deny does not cover.
+
+Fix:
+- **Query:** strip only when the bootstrap function is absent *and* the role is absent:
+  `WHEN to_regprocedure('public.cartera_operador_inicio()') IS NULL AND to_regrole('kora_cartera_session') IS NULL THEN snapshot - 'cartera_coverage'`.
+- **Gate:** count the role as installed:
+  `... || snapshot.cartera_coverage?.session_role!=null`. That routes role-only residue to `partial installation: bootstrap missing`.
+
+Consequences:
+- This changes the catalog query SHA, so it needs a reviewed query hash under your runbook. It does not touch the `cartera_contract` seal.
+- A full rollback must now drop the role, or this gate will (correctly) fail.
+
+## Verified closed, based on the transmitted code
+
+- **B1 lifecycle:**
+  - The exact `session_id` is validated before and after refresh.
+  - Refresh happens at `exp ≤ now+30s`.
+  - Admin `signOut(jwt,'local')` returns errors, including 401/403/404, and each one throws.
+  - The probe accepts only `refresh_token_not_found`/`session_not_found`.
+  - `revoked:true` is written before files are unlinked.
+  - There is no global scope, and the tests cover each claimed path.
+- **B2:**
+  - New directory required.
+  - `wx`/`0600` writes.
+  - Paths are unlinked only after verified revocation (once X1–X3 are fixed).
+- **C1:** create mode refuses banned users. The activation template requires the target to be banned, holding the dedicated role, with exactly 2 corporate profiles, 1 active operator, no foreign principals/authority/actions/fundings, and the install seal passed in as a literal.
+- **C2:** the comment and the activation checks match the scope: one operator row, plus an ordinary auditor and owner who are `authenticated`.
+- **Debt-guard and native tests:** the clock substitution fails closed. If the replacement doesn't match, the "rejects" assertions fail instead of passing falsely.
+- **Source-batch pin and cache versions:** consistent (HTML source `2.0.37`, build `2.0.43`, test expects 49 pages).
+
+## Recommended (non-blocking)
+1. **Cleanup pre-refresh:** if refresh succeeds and logout then fails, the rotated session exists only in memory. The retry then hits reuse detection and falls through to the root path. Persist the refreshed session (`session-i.refreshed.json`, `wx`, `0600`) before logout.
+2. **Create mode:** write the receipt incrementally. As written, a SIGKILL mid-run leaves no receipt, and recovery means decoding `session-i.json`.
+3. **Missing tests:**
+   - a substituted initial `session_id` is rejected with zero calls;
+   - a refresh error before cleanup is rejected;
+   - `refresh_token_already_used` on the probe is rejected.
+   
+   Also rename the "expired-token logout errors" test, since its token isn't expired.
+4. **`build-r6-gate.py` `source()`:** it falls back to `transmitted_files` when there is no `sources` entry, which lets a transmitted (fictitious-literal) copy stand in as actual code. Require `sources` only.
+5. **Output path:** `realpath` the parent of `out` before the prefix check, so a symlink can't escape the private directory.
+
+Once X1–X4 are fixed and the syntax/tests re-run, I'd expect to output **APPROVED FINAL CODE CONDITIONAL ON HOSTED CHECKS**. Hosted Auth/provider/session checks and the JWT expiry+skew gate stay open, as you stated.

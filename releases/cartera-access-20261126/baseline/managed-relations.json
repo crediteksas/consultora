@@ -1,0 +1,67 @@
+[
+  {
+    "schema": "realtime",
+    "name": "messages",
+    "kind": "p"
+  },
+  {
+    "schema": "realtime",
+    "name": "schema_migrations",
+    "kind": "r"
+  },
+  {
+    "schema": "realtime",
+    "name": "subscription",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "bucket_lifecycle_states",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "buckets",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "buckets_analytics",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "buckets_vectors",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "lifecycle_abandoned_artifacts",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "migrations",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "objects",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "s3_multipart_uploads",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "s3_multipart_uploads_parts",
+    "kind": "r"
+  },
+  {
+    "schema": "storage",
+    "name": "vector_indexes",
+    "kind": "r"
+  }
+]

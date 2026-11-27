@@ -17,6 +17,8 @@ async function fixture(t){
   await mkdir(path.dirname(path.join(repo,file)),{recursive:true});await copyFile(path.join(root,file),path.join(repo,file));
  }
  await mkdir(path.join(repo,'config'));const run=JSON.parse(await readFile(path.join(base,'native-result.json')));
+ assert.equal(run.catalog_query_sha256,sha(await readFile(path.join(root,'scripts/supabase-compat/catalog-query-v1.sql'))));
+ run.catalog_query_sha256=sha(await readFile(path.join(repo,'scripts/supabase-compat/catalog-query.sql')));
  const harness=[path.join(evidence,'native-source-batch.py'),path.join(evidence,'../build-active-models.py')];
  run.harness_source_sha256={};for(const file of harness){await writeFile(file,'# synthetic provenance fixture only\n');run.harness_source_sha256[file]=sha(await readFile(file));}
  for(const scenario of ['upgrade','rebuild'])for(const phase of ['before','after']){const dest=path.join(evidence,scenario+'-'+phase+'.json');await copyFile(path.join(base,scenario+'-'+phase+'.json'),dest);run.catalog_evidence[scenario][phase+'_sha256']=sha(await readFile(dest));}

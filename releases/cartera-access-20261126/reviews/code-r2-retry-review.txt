@@ -1,0 +1,95 @@
+# Verdict: **CHANGES REQUIRED**
+
+This review covers only the provided preparation candidate. It does not certify managed Supabase, real sessions, NOVA, publication, or any activation. The gates you listed stay open, and the fictional native tests do not close them.
+
+The R1 fixes hold where I traced them. These held up under review:
+
+- The AFTER-trigger principal registry.
+- The committed budget, with mutations rolled back in a subtransaction.
+- The bound SQL-standard `cartera_subject()`, which needs no `auth` USAGE.
+- The tech-role allow/bound policy pairs.
+- The temporary CREATE grant is revoked before the fingerprint seal.
+- The ordering of the role CHECK change and the seal.
+- The pre-request route and representation narrowing.
+- The adapter: it never falls back to the raw client.
+- The fund path allows request actions only.
+
+The defects below block approval.
+
+## Blocking defects
+
+### 1. Deny-policy coverage exists only at install time, and the activation model re-seals blindly
+- `cartera_dedicated_deny` is created by a one-time loop over the relations present at install. A public table created later, by any migration including other chats' pending work, has no restrictive deny policy.
+- The fixture's activation (`enableFictional`) sets `fingerprint = cartera_catalog_fingerprint()`. That blesses whatever catalog exists at activation. It does not re-run any preflight: inventory, RLS/owner, managed-relation checks, or deny coverage.
+- The contract gates only the four RPCs. PostgREST is covered by the pre-request. Realtime `postgres_changes` is not covered by either the contract or the pre-request. If a later table without the deny policy is added to a publication, a restricted principal could receive its rows.
+- **Fix:**
+  - Add a coverage assertion. Every public `r`/`p` relation plus the three managed relations must carry `cartera_dedicated_deny` with the exact restrictive expression. Put this in `cartera_require_contract` and in a dedicated activation function.
+  - Activation must re-run the full preflight. It must compare against a reviewed expected fingerprint or catalog, not recompute and accept.
+  - Add either a policy-adding event trigger, if the provider permits one, or a mandatory migration/CI gate. That gate must reject new public tables or publication changes that lack the deny policy.
+
+### 2. `cartera_subject()` has narrower EXECUTE than `auth.uid()`
+- The candidate runs `revoke all … from public` and then grants only `authenticated`, `service_role` and `kora_cartera_operator`.
+- The four rewritten shared functions keep their original ACLs. `tiene_capacidad_cartera` and `cobra_quality_operator` are non-standard-body SQL functions, and the trigger is PL/pgSQL. These now need EXECUTE on `cartera_subject()` in the caller's context.
+- Callers outside the granted set will get `permission denied` where they previously got `false`/`NULL`. This includes anon if it holds EXECUTE through PUBLIC, other managed roles, external backend roles, and any policy or trigger evaluated as those roles.
+- The ACL comparison test cannot detect this, because it compares the rewritten functions' own ACLs, not the ACLs of their dependencies.
+- **Fix:** Grant EXECUTE on `cartera_subject()` to PUBLIC. This matches the existing `auth.uid()` exposure, since it returns only the caller's own claim. Alternatively, inventory and test every non-granted caller.
+
+### 3. The tech-role trust path depends on functions and a view that are not hash-pinned
+- The following decide row scope and capabilities inside `kora_cartera_operator`, yet none has an exact install-time precondition:
+  - `rol_actual()`
+  - `creditos_cartera_puede_leer(text)`, which sets the portfolio row scope
+  - `cobra_quality_importer()`
+  - `tiene_capacidad_aliados(text)`
+  - `cobra_krediya_history_cuts(uuid)`
+  - the `creditos_cartera_operaciones` view definition. Only `security_invoker` is checked, but the view determines which columns and joins are exposed.
+- The install seal fingerprints whatever is present at that moment.
+- The fixture replaces `tiene_capacidad_aliados` with a fake. So the real definition's behavior under the tech role is untested, including whether it is an invoker function referencing `auth.uid()`, which would fail with no `auth` USAGE.
+- **Fix:** Add md5 preconditions for each of these, plus a `pg_get_viewdef` hash for the view, sourced from the reviewed catalog like the existing six.
+
+### 4. The scope model is inconsistent, and the isolation claim is only partly tested
+- `portfolio` is origin-scoped through `creditos_cartera_puede_leer`. The two-origin fixture shows only `fiction-A`.
+- These are not origin-scoped:
+  - `cuts` and `cut`, whose full observations include other origins' customer names and documents.
+  - `collection_history` and `events`, through the `cobra_quality_operator() and operation in cut` branch.
+  - `customer_history` for any `p_id`, and `fund_book`.
+- Writes are not origin-scoped either. Collection events and fund requests are accepted for any operation in a cut. The `other` denial in the test comes from "no cut", not from scope.
+- This may match the existing manage semantics. But the dedicated role is new, and the shell labels it "Aliados".
+- **Fix:** Record an explicit decision: is the role Aliados-wide or origin-scoped? Then make all datasets and writes match it, and add two-origin tests for `cut`, `collection_history`, `customer_history`, event insert and provision request.
+
+### 5. The non-superuser installer test exercises only `scope-core.sql`
+These full-only steps are never run under the reduced installer:
+- `CREATE OR REPLACE` of the six existing functions, which requires ownership.
+- Ownership transfer of `datos`, `guardar` and `solicitar`.
+- Fund-table grants and policies, and the sequence grant.
+
+**Fix:** Run the same substituted installer test against `scope-full.sql`.
+
+### 6. The wrapper "hash stability" test is self-referential
+- `wrapperHash` is captured after `setup()` has already installed the candidate. It proves only that `enableFictional` did not alter the wrapper.
+- It does not prove that the installed wrapper equals the reviewed text or hash.
+- **Fix:** Assert it against the hash in `candidate-manifest.json`, or one derived from the reviewed SQL, and keep the baseline md5 precondition test separate.
+
+### 7. The procedure understates install impact and omits an ordering dependency
+- Step 4 presents the SQL install as preparatory. In fact it changes behavior for every authenticated request:
+  - a restrictive policy initplan on every table
+  - a replaced pre-request
+  - rewritten shared identity functions
+- Add an explicit ordinary-user verification and forward-fix plan for this SQL step itself.
+- The relation inventory, including in `scope-core`, expects all `cobra_provision_*` tables. The fund draft migration is therefore a hard prerequisite of both scripts, yet the publication order never lists it.
+
+## Non-blocking issues (should fix or document)
+
+- **Budget and pagination availability:**
+  - Each connection operation calls `cartera_operador_inicio` once for each `permission()` check, and the importer probe adds another call. Each of these runs the full fingerprint.
+  - Initial load is roughly 8 calls plus one per page, so large portfolios or event sets can hit the 120/min limit mid-load.
+  - `p_offset ≤ 50000` hard-fails above about 50.5k rows.
+  - Consider keyset pagination and fewer bootstrap re-checks per generation.
+- **Accept strictness:** values like `application/json; charset=utf-8` or `application/json, text/plain, */*` are denied. This fails closed, but verify the exact headers supabase-js and the browser send before activation.
+- **Tech-role USAGE on `kora_private`:** any `kora_private` function still executable through the default PUBLIC grant becomes resolvable in tech-role contexts. Only fixed bodies run there, but add a preflight that `kora_private` functions do not grant EXECUTE to PUBLIC, or revoke it.
+- **Shell mounts:** `mountContextHelp` is not gated for `restrictedPortfolio`. Any database calls it makes will hit pre-request denials, which is safe but noisy.
+- **Unreachable test alternative:** in the follow-up test, the `/…|row-level security/` alternative can never match. `cartera_error` sanitizes such messages to `cartera_operation_not_confirmed`.
+
+After items 1–7 are resolved, resubmit with:
+- regenerated hashes
+- the scope decision
+- the full-script installer test result

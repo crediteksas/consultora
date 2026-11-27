@@ -7,9 +7,36 @@ WITH application_schemas AS (
     AND nspname NOT IN ('information_schema','auth','storage','realtime',
       'supabase_migrations','extensions','graphql','graphql_public','vault',
       'net','cron','pgbouncer','pgsodium','pgsodium_masks','supabase_functions')
-)
+), catalog_snapshot AS (
 SELECT jsonb_build_object(
   'captured_at',now(), 'server_version',current_setting('server_version'),
+  'cartera_coverage',jsonb_build_object(
+    'graphql_installed',exists(select 1 from pg_extension where extname='pg_graphql'),
+    'session_role',(select jsonb_build_object('login',rolcanlogin,'inherit',rolinherit,'super',rolsuper,'create_db',rolcreatedb,'create_role',rolcreaterole,'replication',rolreplication,'bypass',rolbypassrls) from pg_roles where rolname='kora_cartera_session'),
+    'session_schema_privilege',case when to_regrole('kora_cartera_session') is null then null else exists(select 1 from pg_namespace where nspname in('auth','kora_private','kora_cartera_policy','storage','realtime') and (has_schema_privilege('kora_cartera_session',oid,'USAGE') or has_schema_privilege('kora_cartera_session',oid,'CREATE'))) end,
+    'session_settings',(select setconfig from pg_db_role_setting where setrole=to_regrole('kora_cartera_session') and setdatabase=0),
+    'session_memberships',(select coalesce(jsonb_agg(jsonb_build_object('role',pg_get_userbyid(roleid),'member',pg_get_userbyid(member),'grantor',pg_get_userbyid(grantor),'bootstrap_grantor',grantor=10,'admin',admin_option,'inherit',inherit_option,'set',set_option) order by roleid,member,grantor),'[]') from pg_auth_members where roleid=to_regrole('kora_cartera_session') or member=to_regrole('kora_cartera_session')),
+    'rpc_returns',(select coalesce(jsonb_agg(jsonb_build_object('name',p.proname,'returns',format_type(p.prorettype,null),'set',p.proretset) order by p.proname),'[]') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in('cartera_operador_inicio','cartera_operador_datos','cartera_operador_guardar_gestion','cartera_operador_solicitar_provision')),
+
+    'tables',(select coalesce(jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname,'kind',c.relkind,'rls',c.relrowsecurity,'safe_message_partition',(c.relispartition and c.relkind in('r','p') and n.nspname='realtime'
+ and c.oid in(select relid from pg_catalog.pg_partition_tree(to_regclass('realtime.messages')) where level>0)
+ and c.relowner=(select relowner from pg_class where oid=to_regclass('realtime.messages'))
+ and not exists(select 1 from aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a where a.grantee=0)
+ and not exists(select 1 from pg_attribute ca cross join lateral aclexplode(ca.attacl) a where ca.attrelid=c.oid and ca.attnum>0 and not ca.attisdropped and a.grantee=0)
+ and not exists(select 1 from aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) a where a.grantee=0 and a.privilege_type in('USAGE','CREATE'))
+ and case when to_regrole('kora_cartera_session') is null then true else
+ not has_schema_privilege('kora_cartera_session',n.oid,'USAGE') and not has_schema_privilege('kora_cartera_session',n.oid,'CREATE')
+ and not has_table_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+ and not has_any_column_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,REFERENCES') end),
+      'session_privileged',case when to_regrole('kora_cartera_session') is null then null else (has_table_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') or has_any_column_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,REFERENCES') or c.relowner=to_regrole('kora_cartera_session')) end,
+      'authenticated_permissive',exists(select 1 from pg_policy pol where pol.polrelid=c.oid and pol.polpermissive and exists(select 1 from unnest(pol.polroles) r where r=0 or pg_has_role('authenticated',r,'USAGE'))),
+      'policy',(select jsonb_build_object('name',p.polname,'command',p.polcmd,'permissive',p.polpermissive,
+        'roles',(select jsonb_agg(pg_get_userbyid(r) order by r) from unnest(p.polroles) r),
+        'using_md5',md5(pg_get_expr(p.polqual,p.polrelid)),'check_md5',md5(pg_get_expr(p.polwithcheck,p.polrelid)))
+        from pg_policy p where p.polrelid=c.oid and p.polname='cartera_dedicated_deny')) order by n.nspname,c.relname),'[]')
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace where(n.nspname='public' and c.relkind in('r','p'))or(n.nspname in('storage','realtime') and c.relkind in('r','p','v','m','f'))),
+    'publications',(select coalesce(jsonb_agg(jsonb_build_object('publication',pubname,'schema',schemaname,'table',tablename) order by pubname,schemaname,tablename),'[]') from pg_publication_tables)),
+
   'schema_grants',(
     SELECT coalesce(jsonb_agg(jsonb_build_object(
       'schema',n.nspname,'owner',pg_get_userbyid(n.nspowner),'acl',n.nspacl::text,
@@ -106,4 +133,5 @@ SELECT jsonb_build_object(
     FROM pg_db_role_setting s WHERE EXISTS(SELECT 1 FROM unnest(s.setconfig) v
       WHERE split_part(v,'=',1) IN ('pgrst.db_pre_request','pgrst.db_schemas'))
   )
-) AS snapshot;
+) AS snapshot)
+SELECT CASE WHEN to_regprocedure('public.cartera_operador_inicio()') IS NULL AND to_regrole('kora_cartera_session') IS NULL THEN snapshot - 'cartera_coverage' ELSE snapshot END AS snapshot FROM catalog_snapshot;

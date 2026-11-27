@@ -143,6 +143,7 @@
 
   function resolveExperience(profile) {
     if (!profile?.activo) return null;
+    if (profile.rol === 'operador_cartera') return 'portfolio';
     if (CORPORATE_ROLES.has(profile.rol)) return 'corporate';
     if (STORE_ROLES.has(profile.rol) && profile.tienda_codigo) return 'store';
     return null;
@@ -150,6 +151,7 @@
 
   function homeFor(profile) {
     const experience = resolveExperience(profile);
+    if (experience === 'portfolio') return 'creditos-cartera.html';
     if (experience === 'corporate') return 'tablero.html';
     if (experience === 'store') return 'reportes.html';
     return null;
@@ -166,6 +168,7 @@
     if (PUBLIC_ROUTES.has(normalized)) return { allowed: true, route: normalized, experience: resolveExperience(profile) };
     const experience = resolveExperience(profile);
     if (!experience) return { allowed: false, route: normalized, experience: null };
+    if (experience === 'portfolio') return { allowed: capabilities.cartera === true && CREDIT_PORTFOLIO_ROUTES.has(normalized), route: normalized, experience };
     if (experience === 'store') {
       return { allowed: STORE_ROUTES_BY_ROLE[profile.rol].has(normalized), route: normalized, experience };
     }
@@ -185,6 +188,7 @@
 
   function navigationFor(profile, capabilities = {}) {
     const experience = resolveExperience(profile);
+    if (experience === 'portfolio') return capabilities.cartera === true ? [{title:'CRÉDITOS Y CARTERA',icon:'badge-dollar-sign',items:[{label:'Créditos y cartera',href:'creditos-cartera.html',icon:'book-open-check'}]}] : [];
     if (experience === 'corporate') {
       const hasFullCorporateAccess = profile.rol === 'gerencia';
       const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';

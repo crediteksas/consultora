@@ -1,0 +1,10 @@
+{
+  "preparation_only": true,
+  "base_source_manifest_sha256": "b244aeaa4890136e702833a51b69bd452207893623c81ac77b8e396143ded85c",
+  "outputs": {
+    "scope-full.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
+    "scope-core.sql": "60ffc30e39c8500171b1a54a0cc22ef5a2d0391f7d6a32d7d4363cd60936ef71",
+    "catalog-query.sql": "e2c555962816a8bb7c2c3a033c65b3026633711f4ae394d33cd8dee136dce17c"
+  },
+  "production_writes": 0
+}

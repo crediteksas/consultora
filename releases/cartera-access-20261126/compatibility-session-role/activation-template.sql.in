@@ -1,0 +1,24 @@
+-- Server-only activation. Render placeholders from the protected three-person
+-- scope and the INSTALL-TIME reviewed seal; never from current live fingerprint.
+-- This file contains no real identity or credential. No payments or fundings.
+begin;
+set local search_path='';
+do $activate$
+declare target uuid:='__OPERATOR_UUID__';auditor uuid:='__AUDITOR_UUID__';owner_id uuid:='__OWNER_UUID__';seal text:='__INSTALL_SEAL__';
+begin
+ if target=auditor or target=owner_id or auditor=owner_id or seal!~'^[a-f0-9]{64}$' then raise exception 'cartera_activation_scope';end if;
+ perform 1 from kora_private.cartera_contract where singleton for update;
+ perform 1 from public.perfiles where id in(target,auditor,owner_id) for update;
+ if not exists(select 1 from public.perfiles where id=target and activo and rol='admin_tienda') or not exists(select 1 from public.perfiles where id=auditor and activo and rol='auditoria') or not exists(select 1 from public.perfiles where id=owner_id and activo and rol='gerencia') then raise exception 'cartera_activation_profile_changed';end if;
+ if (select count(*) from public.perfiles where activo and rol in('gerencia','auditoria'))<>2 or (select count(*) from public.credit_portfolio_operators where active)<>1 or not exists(select 1 from public.credit_portfolio_operators where perfil_id=target and active and capability='manage') then raise exception 'cartera_activation_capability_changed';end if;
+ if not exists(select 1 from auth.users where id=target and role='kora_cartera_session' and banned_until>now()) or not exists(select 1 from auth.users where id=auditor and role='authenticated') or not exists(select 1 from auth.users where id=owner_id and role='authenticated') then raise exception 'cartera_activation_auth_role_changed';end if;
+ if exists(select 1 from kora_private.cartera_principals where user_id<>target) or exists(select 1 from public.cobra_provision_authority where user_id<>owner_id) or exists(select 1 from public.cobra_provision_actions) or exists(select 1 from public.cobra_provision_fundings) then raise exception 'cartera_activation_state_changed';end if;
+ if not exists(select 1 from kora_private.cartera_contract where singleton and not enabled and fingerprint=seal) then raise exception 'cartera_activation_install_seal_changed';end if;
+ update public.perfiles set rol='operador_cartera' where id=target and activo and rol='admin_tienda';
+ if not found then raise exception 'cartera_activation_target_not_changed';end if;
+ insert into public.cobra_provision_authority(singleton,user_id) values(true,owner_id) on conflict(singleton) do nothing;
+ if not exists(select 1 from public.cobra_provision_authority where singleton and user_id=owner_id) then raise exception 'cartera_activation_authority_mismatch';end if;
+ if not exists(select 1 from kora_private.cartera_principals where user_id=target) then raise exception 'cartera_activation_sticky_registry_missing';end if;
+ perform kora_private.cartera_activate(seal);
+end$activate$;
+commit;

@@ -1,0 +1,151 @@
+# Review: R6 dedicated Cartera session role (correction to C1–C13)
+
+## Verdict: **CHANGES REQUIRED**
+
+R6 resolves most of C1–C13 and is close to approvable. I accept the PUBLIC/HTTP boundary as a *proposed* scope clarification in principle, but not in its current form. As written, the design rests the entire residual PUBLIC surface on one control: a configuration-dependent pre-request function. That control is a global change the design does not acknowledge as such. The fixture also contains a fail-open bug in exactly that control. The conditions below are what I would need to record the amended C1 (C1′) as acceptable.
+
+This review covers source and design only. It does not certify the implementation, which has not been integrated. It also does not certify hosted Supabase behavior or any PostgREST or GoTrue version other than the pinned fixture images.
+
+---
+
+## Question 1: Can C1 literally be met only by revoking PUBLIC globally?
+
+**Partly yes, partly no.** The design overstates the impossibility.
+
+- **True:** PostgreSQL cannot exclude one role from PUBLIC. `has_function_privilege`/`has_table_privilege` include PUBLIC grants, so literal C1 cannot hold for:
+  - `pg_catalog` functions
+  - extension and provider functions
+  - pre-existing non-Cartera functions in `public`
+
+  Achieving it there would mean changing ACLs on objects outside scope. Breakage would also be plausible: roles other than anon/authenticated/service_role may rely on PUBLIC, including provider admin roles and trigger or owner contexts. For those objects, the requirement in my C1 cannot be met within scope. I accept amending it.
+- **Not true for Cartera-owned objects:** `REVOKE EXECUTE ... FROM PUBLIC` per object, followed by explicit grants, is not global. R6 already does this for the four RPCs. Every function the Cartera delta creates or owns must do the same. For those objects, literal C1 is achievable and remains required.
+- **Schemas and relations:** literal C1 is achievable here as well. In Supabase, `public`, `extensions`, `graphql_public`, `storage` and `realtime` grants and default privileges target anon/authenticated/service_role rather than PUBLIC. R6 correctly treats any PUBLIC data grant as blocking.
+
+The residual that genuinely needs the scope clarification is therefore limited to: **PUBLIC-executable functions in `public` and `pg_catalog` that Cartera does not own.**
+
+## Question 2: Is mandatory pre-request plus NOLOGIN defensible?
+
+**Defensible as the primary boundary for the invoker and catalog residue. Not defensible as the sole control for PUBLIC-executable SECURITY DEFINER functions or side-effecting functions.**
+
+Why it is defensible:
+- The only way to execute as `kora_cartera_session` is through `SET ROLE` by a member, and the only member is `authenticator`.
+- NOLOGIN and no forward membership close every other entry.
+- Storage, Realtime and other service connections are not members, so their `SET ROLE` fails closed.
+- Anyone holding the `authenticator` credential can already assume `service_role`. The new role therefore adds no new class of exposure at that layer.
+- PUBLIC-executable SECURITY INVOKER functions run with the role's empty data privileges, so data reach stays zero even if one of them is reached.
+
+Why it is not sufficient alone:
+- **SECURITY DEFINER functions:** a PUBLIC-executable SECURITY DEFINER function in `public` runs with its owner's privileges. If the pre-request disappears, nothing in-band stops it. That could happen through a config reset, a reload, an edit of the `pgrst.db_pre_request` role setting, or a PostgREST version that skips it on some path.
+- **Side-effecting invoker functions:** invoker functions with effects outside SQL privileges carry the same exposure. Examples are extension functions such as `http`/`pg_net`/`dblink` if they live in a reachable schema, and app functions that wrap them.
+- **Drift after activation:** PostgreSQL's built-in default (EXECUTE to PUBLIC on new functions) does not appear in `pg_default_acl`. Every future migration that adds a function to `public` silently widens the residue. An activation-time fingerprint does not catch that.
+
+---
+
+## Status of C1–C13
+
+| Item | Status |
+|---|---|
+| C1 | Amended to C1′ by scope clarification. Conditions in R6-1 to R6-4 |
+| C2 | Resolved: no USAGE on `kora_cartera_policy`/private schemas |
+| C3 | Partially resolved. The `authenticated` column is still vague (R6-6) |
+| C4 | Mostly resolved. Installer membership is undecided (R6-7) |
+| C5 | Specified. Effectiveness is untested (R6-8) |
+| C6 | Resolved: no policies on managed objects; app-table RESTRICTIVE only in the reviewed delta |
+| C7 | Resolved for activation. Post-activation drift is missing (R6-5) |
+| C8 | Specified. Must be tested in the SECURITY DEFINER form (R6-2) |
+| C9 | Resolved as open gates, which is acceptable |
+| C10 | Specified. Fixture coverage is incomplete (R6-9) |
+| C11 | Incomplete: the downgrade defense is procedural and activation-only (R6-5) |
+| C12 | Specified as an audit plus fictional tests, which is acceptable at design level |
+| C13 | Resolved; the order matches |
+
+---
+
+## Required changes
+
+**R6-1. Make C1′ precise.**
+- (a) Every function created or owned by the Cartera delta revokes PUBLIC per object and receives explicit grants. Literal C1 applies to these.
+- (b) Enumerate and hash the residual PUBLIC-executable functions in reachable schemas.
+- (c) Any PUBLIC-executable **SECURITY DEFINER** function in `public`, other than the four RPCs and the guard, blocks activation unless it meets one of these:
+  - it has an in-body denial for `kora_cartera_session`, or
+  - its PUBLIC grant is removed through a separately approved per-object change.
+
+  Pre-request coverage alone is not accepted for this class.
+- (d) Any reachable invoker function with effects outside SQL privileges also blocks activation, for example network, file, `NOTIFY`-based or extension calls.
+- (e) The current text limits the SECURITY DEFINER blocking rule to storage/realtime. That is moot, because the role has no USAGE there. Apply the rule to `public`.
+
+**R6-2. Acknowledge that the pre-request is a global change.**
+- Name where the pre-request is configured: PostgREST config, or `pgrst.db_pre_request` on `authenticator`. The latter is a provider-role setting.
+- Adding a client branch to the existing function changes behavior for every request from every role. That is the same breadth of change R6 rejects for PUBLIC revocation, so it needs explicit scope approval.
+- Require tests showing anon, authenticated and service_role behavior is identical before and after the change.
+- The guard must stay executable by every role PostgREST switches into. The fixture revokes PUBLIC and grants only to authenticated and the session role. Under that fixture config, anon requests would fail, which would be a global outage.
+- The guard sits in an exposed schema, so `/rpc/<guard>` is callable. State that calling it directly is harmless, or move it.
+- Test the real SECURITY DEFINER form, because the fixture is SECURITY INVOKER. Confirm that `current_setting('role', true)` inside the definer still returns the impersonated role.
+
+**R6-3. Make the guard allowlist precise.**
+- **Null-safety (fixture bug):** `current_setting('request.method',true)<>'POST' OR ...` evaluates to NULL when the setting is absent, so `IF` does not raise. The guard fails open. Use `IS DISTINCT FROM` for every comparison and deny when `role` matches but any request GUC is missing.
+- **Schema/profile:** pin it. A matching `request.path` combined with `Content-Profile` or `Accept-Profile` could resolve a same-named function in another exposed schema.
+- **Overloads:** exactly one function per allowed name across all exposed schemas, with no overloads.
+- **Return types:** the four RPCs must return scalar `jsonb`, not composite or `setof` types. Otherwise `?select=` computed fields and embedding can invoke other PUBLIC functions on the returned row type, and the path-only guard permits any query string.
+- **Tests:** `select`/`order`/filters/`Prefer: params`/`Prefer: tx`, trailing slash, case and percent-encoded paths, HEAD and GET on the RPCs.
+
+**R6-4. Prove pre-request coverage and fail closed if it is missing.**
+- Verify which request paths execute the pre-request on the PostgREST version actually deployed: root/OpenAPI, HEAD, GET RPC, and after a schema-cache reload.
+- Define a kill switch: `REVOKE kora_cartera_session FROM authenticator`. This makes every session request fail closed and never downgrades the role.
+- Recommended, not blocking: the guard sets a transaction-local marker and the four RPCs refuse without it. Missing-guard drift then surfaces as a visible failure.
+
+**R6-5. Run continuous checks after activation, not only at activation.**
+
+Run these checks on a recurring schedule, each tied to the kill switch:
+- Auth role vs. registry audit, conditions (a) and (b)
+- `pgrst.db_pre_request`/`pg_db_role_setting`
+- `pg_auth_members` for the role
+- the reachable-function inventory
+
+Make two decisions explicit:
+- **R5 app-table RESTRICTIVE policies:** the policies for ever-registered `sub`s under `authenticated` are an **activation precondition**. Without them, a later downgrade gives full ERP access.
+- **Provider tables:** a downgraded token can reach `realtime.subscription`/`schema_migrations`. That exposure remains a residual risk mitigated only by audit and the kill switch. It needs explicit approval as an accepted residual and must not be left implicit.
+
+**R6-6. Write out the RPC matrix per RPC.** For each of the four RPCs, give the grants to the session role, `authenticated`, `anon` and PUBLIC. "authenticated conserva el acceso revisado en R5" is not a matrix. Name which RPCs `authenticated` keeps. Presumably that is bootstrap only.
+
+**R6-7. Decide on installer membership.** "Conserva la concesión mínima ... o se elimina" is two designs. Pick one and state the exact final `pg_auth_members` row. Under PG16+, a CREATEROLE creator receives an automatic ADMIN grant, and `createrole_self_grant` may add more. Verify on the target version whether the creator can remove that grant. If it is retained, it must be ADMIN TRUE, INHERIT FALSE and SET FALSE, and it must be in the fingerprint. Also verify the hosted server is PG ≥16.
+
+**R6-8. Prove role settings take effect.**
+- `ALTER ROLE ... SET` is not applied by `SET ROLE` in plain PostgreSQL. It reaches the session role only through PostgREST's impersonated-role settings feature.
+- Test through the real API that `statement_timeout`/`lock_timeout` are in effect for session requests, for example with a fixture RPC that returns `current_setting`.
+- Note that the planned `authenticator` → `SET LOCAL ROLE` test will not show these settings. That is expected and must not be read as a failure.
+
+**R6-9. Close the gaps between the fixture and the design.** These tests must be in the plan before re-review:
+- **Raw-route denials:** these currently accept 401/403. They cannot tell the guard apart from missing privileges. Assert the specific guard error.
+- **Second PostgREST instance:** add one without the pre-request to show:
+  - the privilege layer independently denies all relations, and
+  - a fictional PUBLIC SECURITY DEFINER function *is* reachable without the guard and denied with it.
+
+  That pair is the evidence for the boundary being approved. Those bypass fixtures are described in R6 but absent from the code.
+- **Auth flows:** refresh-token grant, password change, confirmed email change, and logout/revoke are claimed but not exercised. Only re-login is tested.
+- **Self-update:** also assert the role through admin `GET /admin/users/{id}`, not only through the next JWT.
+- **Role assertions:** add assertions for role attributes, forward and reverse membership with options, server version, `pg_db_role_setting`, and the full C1′ inventory query. The current final check covers only realtime and `authenticated` membership.
+- **Wording:** the manually signed `service_role` admin token contradicts "manual tokens only in negative tests". Reword this as a local admin fixture token signed with a fictional secret.
+
+---
+
+## Non-blocking notes
+
+- The `freeport`/port arguments are unused. That is consistent with "no host ports" and only needs cleanup.
+- The OpenAPI root can disclose metadata about PUBLIC functions, if it is reached at all. That stays under the existing API-root gate.
+- Hosted PostgREST and GoTrue versions must match the pinned images or be re-tested. The fixture result is version-specific.
+
+## Not approved
+
+This review does not approve:
+- installation or deployment
+- any real account change, ban, sign-out or role assignment
+- service-role key use
+- Auth configuration
+- any pre-request or `authenticator` setting change
+- any provider-owned ACL or policy
+- Storage, Realtime or GraphQL behavior
+- the two backends
+- external limits
+
+A future **APPROVED DESIGN PREPARATION** would cover only isolated source and fictional tests, after R6-1 through R6-9 are written into the design and test plan.

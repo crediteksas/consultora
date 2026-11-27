@@ -1,0 +1,75 @@
+/* Review candidate: only the portfolio page. No amounts, roles or requests change. */
+body[data-portfolio-ui] .page{padding:24px;min-width:0}
+body[data-portfolio-ui] .page-head{align-items:center;margin-bottom:20px}
+body[data-portfolio-ui] .page-head h1{font-size:28px;line-height:1.2}
+body[data-portfolio-ui] .page-head p{max-width:65ch;line-height:1.5}
+body[data-portfolio-ui] .nova-state{max-width:430px;font-size:14px;line-height:1.5;flex-shrink:0}
+body[data-portfolio-ui] .page>nav.tabs{display:flex;flex-wrap:wrap;gap:8px;padding:10px!important;overflow:visible;scroll-padding:0;border-top:1px solid var(--line);margin-bottom:20px}
+body[data-portfolio-ui] .page>nav.tabs button{min-height:44px;white-space:normal;line-height:1.4;padding:10px 14px;flex:0 1 auto;box-shadow:none;transform:none}
+body[data-portfolio-ui] .page>nav.tabs button[aria-selected=true]{background:#0b1e3d;color:#fff}
+body[data-portfolio-ui] :is(button,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #00848e!important;outline-offset:3px}
+body[data-portfolio-ui] #metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+body[data-portfolio-ui] #metrics[hidden]{display:none!important}
+body[data-portfolio-ui] #metrics .metric{padding:18px;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+body[data-portfolio-ui] #metrics small{line-height:1.45;font-size:14px}
+body[data-portfolio-ui] #metrics strong{font-size:clamp(20px,2.1vw,29px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin:0}
+body[data-portfolio-ui] #collectionCoverage{border-top:1px solid #e3d2a5;border-left:4px solid #b88920;background:#fff9eb;padding:14px 18px;line-height:1.5;color:#654c19}
+body[data-portfolio-ui] #portfolioFilters{display:grid;grid-template-columns:2fr repeat(3,minmax(130px,1fr)) auto;gap:12px;padding:16px!important;align-items:end;border-top:1px solid var(--line)}
+body[data-portfolio-ui] #portfolioFilters[hidden]{display:none!important}
+body[data-portfolio-ui] .portfolio-filter{display:grid;gap:6px;min-width:0;color:#52637b;font-size:13px;font-weight:650}
+body[data-portfolio-ui] .portfolio-filter .control{width:100%;font-size:15px;min-height:44px}
+body[data-portfolio-ui] #refresh{min-height:44px}
+body[data-portfolio-ui] .panel{min-width:0}
+body[data-portfolio-ui] :is(.table-wrap,.q-scroll,.ce-scroll){max-width:100%;overscroll-behavior-x:contain;scrollbar-width:auto}
+body[data-portfolio-ui] .table td{line-height:1.5}
+body[data-portfolio-ui] .table .amount{font-variant-numeric:tabular-nums}
+body[data-portfolio-ui] .table-hint{color:#52637b;font-size:13px;line-height:1.5;margin:0 0 10px}
+body[data-portfolio-ui] #performanceContent{grid-template-columns:repeat(4,minmax(0,1fr))}
+body[data-portfolio-ui] #q-root{padding:20px;background:#fff;border:1px solid var(--line)}
+body[data-portfolio-ui] #q-root .q-head{padding:0!important;border:0!important;box-shadow:none!important;background:none!important}
+body[data-portfolio-ui] #q-root h2{font-size:23px;line-height:1.3}
+body[data-portfolio-ui] :is(#q-status,#ce-status){line-height:1.5;margin:16px 0}
+body[data-portfolio-ui] #q-root :is(.q-controls,form){gap:14px}
+body[data-portfolio-ui] #q-root .q-controls{padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
+body[data-portfolio-ui] #q-root .q-controls label:last-child{flex:1;min-width:220px}
+body[data-portfolio-ui] #q-root .q-controls select{width:100%}
+body[data-portfolio-ui] #q-root .q-metrics strong{line-height:1.35;margin:10px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+body[data-portfolio-ui] #evolution-root .ce-shell{border:1px solid var(--line);padding:20px}
+body[data-portfolio-ui] #evolution-root h2{font-size:23px}
+body[data-portfolio-ui] #evolution-root .ce-tabs{gap:8px}
+body[data-portfolio-ui] #evolution-root :is(.ce-scroll,.ce-strip){min-width:0}
+body[data-portfolio-ui] :is(#q-root,#evolution-root) button{min-height:44px}
+body[data-portfolio-ui] :is(#q-root,#evolution-root) button:disabled{cursor:default}
+body[data-portfolio-ui] .modal-bg{z-index:1500;padding:16px;overflow:auto}
+body[data-portfolio-ui] .modal{max-height:calc(100dvh - 32px);overflow:auto;padding:22px}
+body[data-portfolio-ui] .modal-actions{position:sticky;bottom:-22px;padding:14px 0 0;background:#fff}
+body[data-portfolio-ui] #q-dialog{max-height:calc(100dvh - 24px)}
+body[data-portfolio-ui] #q-dialog:modal{display:block}
+@media(max-width:1100px){
+ body[data-portfolio-ui] #portfolioFilters{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-portfolio-ui] .portfolio-filter:first-child{grid-column:1/-1}
+ body[data-portfolio-ui] #metrics,body[data-portfolio-ui] #performanceContent{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-portfolio-ui] .nova-state{max-width:none;flex-shrink:1}
+}
+@media(max-width:650px){
+ body[data-portfolio-ui] .page{padding:20px 12px 40px}
+ body[data-portfolio-ui] .page-head h1{font-size:24px}
+ body[data-portfolio-ui] .page-head p{font-size:15px}
+ body[data-portfolio-ui] .page>nav.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px!important}
+ body[data-portfolio-ui] .page>nav.tabs button{width:100%;min-width:0;font-size:13px;text-align:left;padding:10px}
+ body[data-portfolio-ui] .nova-state{font-size:13px;padding:10px 12px}
+ body[data-portfolio-ui] #metrics .metric{padding:14px}
+ body[data-portfolio-ui] #metrics small{font-size:13px}
+ body[data-portfolio-ui] #metrics strong{font-size:21px}
+ body[data-portfolio-ui] #portfolioFilters{grid-template-columns:1fr;padding:14px!important}
+ body[data-portfolio-ui] #q-root,body[data-portfolio-ui] #evolution-root .ce-shell{padding:14px}
+ body[data-portfolio-ui] #q-root .q-head,body[data-portfolio-ui] #evolution-root .ce-title{display:block}
+ body[data-portfolio-ui] #q-root .q-controls label:last-child{min-width:0}
+ body[data-portfolio-ui] #q-root :is(.q-controls,form)>*{width:100%;min-width:0}
+ body[data-portfolio-ui] #q-root h2,body[data-portfolio-ui] #evolution-root h2{font-size:21px}
+ body[data-portfolio-ui] #evolution-root .ce-tabs button{flex:1 1 100%;text-align:left}
+ body[data-portfolio-ui] #performanceContent{grid-template-columns:1fr}
+ body[data-portfolio-ui] .modal-actions{bottom:-16px}
+ body[data-portfolio-ui] .modal{padding:16px}
+}
+@media(prefers-reduced-motion:reduce){body[data-portfolio-ui] .page *{animation:none!important;transition:none!important}}

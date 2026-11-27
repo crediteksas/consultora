@@ -1,0 +1,26 @@
+import{checkCarteraCoverage}from'../../releases/cartera-access-20261126/compatibility-session-role/candidate/cartera-coverage-gate.mjs';
+import'../../releases/cartera-access-20261126/compatibility-session-role/hosted-profile-lifecycle.test.mjs';
+import'../../releases/cartera-access-20261126/client.test.mjs';
+import'../../releases/cartera-access-20261126/compatibility-session-role/r6-shell.test.mjs';
+import test from'node:test';import assert from'node:assert/strict';import{readFileSync as read}from'node:fs';
+import{checkPermissionContract}from'../../releases/cartera-access-20261126/compatibility-session-role/candidate/check-permission-contract.mjs';
+import'../../releases/cartera-access-20261126/compatibility-session-role/r6-native.test.mjs';
+import'../../releases/cartera-access-20261126/compatibility-session-role/r6-data-native.test.mjs';
+import'../../releases/cartera-access-20261126/compatibility-session-role/r6-partitions.test.mjs';
+import'../../releases/cartera-access-20261126/compatibility-session-role/r6-debt.test.mjs';
+const folder='tests/fixtures/supabase-compat/cartera-access';
+const bundle=scenario=>Object.fromEntries(['before','after','contract','created'].map(k=>[k,JSON.parse(read(folder+'/'+scenario+'-'+k+'.json'))]));
+for(const scenario of['upgrade','rebuild'])test('Cartera '+scenario+' exact contract rejects missing coverage, widened ACL and permissive overlays',()=>{
+ const source=bundle(scenario);const partial=structuredClone(source.after);partial.functions=partial.functions.filter(f=>f.name!=='cartera_operador_inicio');assert.ok(checkCarteraCoverage(partial).length);assert.equal(checkPermissionContract(source).ok,true);
+ const fail=mutate=>{const b=structuredClone(source);mutate(b);assert.equal(checkPermissionContract(b).ok,false);};
+ fail(b=>b.after.cartera_coverage.tables.pop());
+ fail(b=>b.after.cartera_coverage.session_memberships.push({...b.after.cartera_coverage.session_memberships[0],member:'service_role'}));
+ fail(b=>b.after.cartera_coverage.tables[0].session_privileged=true);
+ fail(b=>b.after.functions.find(f=>f.name==='cartera_operador_datos').grants.push({grantee:'PUBLIC',grantor:'kora_cartera_operator',privilege:'EXECUTE',grantable:false}));
+ fail(b=>b.after.cartera_coverage.rpc_returns[0].set=true);
+ fail(b=>b.after.cartera_coverage.publications.push({publication:'fiction',schema:'public',table:'clientes'}));
+ fail(b=>{const e=b.contract.cartera_restrictive_overlay[0];b.after.policies.find(p=>p.schema===e.schema&&p.table===e.name&&p.name==='cartera_dedicated_deny').permissive=true;});
+ fail(b=>{const e=b.contract.cartera_restrictive_overlay[0];b.after.relations.find(r=>r.schema===e.schema&&r.name===e.name).force_rls=true;});
+ fail(b=>{const e=b.contract.cartera_restrictive_overlay[0];b.contract.cartera_restrictive_overlay.push(e);});
+ fail(b=>{const e=b.contract.cartera_restrictive_overlay[0];b.before.policies.find(p=>p.schema===e.schema&&p.table===e.name).using_md5='0'.repeat(32);});
+});

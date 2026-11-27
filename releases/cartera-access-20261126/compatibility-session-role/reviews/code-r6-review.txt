@@ -1,0 +1,130 @@
+# Revisión R6 · Acceso dedicado de Cartera
+
+**Dictamen: APPROVED IMPLEMENTATION CONDITIONAL ON HOSTED CHECKS**
+
+No encontré defectos P0 en el código. El SQL falla cerrado en todos los caminos que revisé: si una precondición no se cumple, la transacción de instalación se revierte y nada queda aplicado.
+
+Antes de instalar deben cerrarse cinco condiciones P1. Casi todas son verificaciones de premisas, no cambios de código. Una es una prueba que falta.
+
+**Alcance de esta revisión:**
+- Solo revisé el contenido pegado, sin herramientas, así que no pude confirmar ningún sha256.
+- No recibí `old-debt-guard.sql`, el archivo `20261127011623_…sql`, `creditos-cartera-domain.js` ni los JSON de `baseline/`.
+
+---
+
+## P1 · Condiciones previas a la instalación
+
+### P1-1. El wrapper de `kora_confirmacion_deuda_pre_request` reemplaza la función completa
+`build-r6.py` sustituye todo el cuerpo entre `create or replace…` y `end$$;`. El preflight solo comprueba que el md5 de la función actual en producción sea `be5212a1…`. Ese md5 no dice qué contiene la función.
+
+Si esa versión hace algo más que `perform kora_private.exigir_confirmacion_deuda_api();`, R6 lo elimina sin avisar. Esta función se ejecuta en cada request de producción.
+
+- **Verificación:** en producción, en modo solo lectura, ejecutar `select pg_get_functiondef('public.kora_confirmacion_deuda_pre_request()'::regprocedure);` y confirmar que la única lógica no relacionada con Cartera es esa llamada.
+- **Prueba que falta:** el fixture desactiva la guarda de deuda (`inicio='2099-01-01'`), así que la semántica que se conserva para usuarios ordinarios no está probada. Hay que agregar un caso con la guarda activa (fecha pasada) y un `admin_tienda` sin confirmación del día, que compruebe tres cosas:
+  1. una ruta normal sigue rechazada por la guarda de deuda;
+  2. `POST /rpc/cartera_operador_inicio` devuelve `{restricted:false}`;
+  3. `gerencia` no se ve afectada.
+
+### P1-2. Procedencia y orden de las migraciones
+- Confirmar que `sha256(supabase/migrations/20261127011623_cartera_dedicated_session_access.sql) = 71ca8e5b…`, es decir, idéntico al `scope-full.sql` revisado.
+- `20261126154810_cobra_krediya_evolution_provision_review.sql` empieza con *"REVIEW ONLY. Requires separate user approval"*. R6 depende de ella: sus tablas están en la lista de 197 y sus funciones están fijadas por md5. Además, la propia migración amplía lo que pueden hacer los usuarios ordinarios autenticados: crea tablas y RPCs nuevas con grants a `authenticated`.
+- **Hace falta aprobación explícita** de esa migración como parte de este despliegue, aplicada antes que R6. `cobra_provision_authority` queda vacía, así que nadie podrá autorizar fondos hasta un insert separado. Eso es correcto, pero debe quedar registrado como paso aparte.
+
+### P1-3. Orden de despliegue: el nuevo `sidebar.js` depende de esta RPC para todos los usuarios
+`initialize()` llama `cartera_operador_inicio` en cada página y para cada usuario. Si la RPC no existe o PostgREST todavía no la tiene en su caché (`PGRST202`), `resolveBootstrap` lanza un error y **ningún usuario de KORA puede entrar**.
+
+Orden obligatorio:
+1. Fund → R6 (SQL).
+2. `notify pgrst,'reload schema'` y también `notify pgrst,'reload config'`.
+3. Smoke test con una cuenta ordinaria: `inicio` responde `{restricted:false}`.
+4. Recién entonces publicar el frontend.
+
+Dos puntos relacionados:
+- **Recarga en caliente sin probar.** La prueba nativa arrancó PostgREST *después* de instalar R6. La aplicación de `statement_timeout`/`lock_timeout` al rol dedicado tras una recarga en caliente no está demostrada. Si no se puede comprobar, reiniciar el servicio API.
+- **Regla de rollback.** Nunca eliminar `cartera_operador_inicio` mientras se sirve el nuevo sidebar. Para desactivar sin afectar a nadie más: `update kora_private.cartera_contract set enabled=false;`.
+
+### P1-4. Puertas hosted que abortarán la instalación si fallan
+Estas puertas fallan de forma segura (rollback), pero pueden impedir el lanzamiento de mañana. Conviene ejecutarlas antes, en modo solo lectura:
+
+```sql
+select
+ (select count(*) from pg_extension where extname='pg_graphql') graphql,          -- debe ser 0
+ (select count(*) from pg_publication_tables) pub_tables,                         -- debe ser 0
+ (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+   where n.nspname='public' and a.grantee=0 and a.privilege_type='EXECUTE'
+   and p.prorettype not in('trigger'::regtype,'event_trigger'::regtype,'internal'::regtype)
+   and p.proname<>'kora_confirmacion_deuda_pre_request'
+   and (p.prosecdef or case when p.prokind in('f','p') then pg_get_functiondef(p.oid)
+        ~* '(dblink|http_|net\.|pg_notify|lo_import|lo_export|pg_read_file|pg_write_file)' else false end)) public_unsafe, -- 0
+ (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+   where n.nspname='kora_private' and p.prorettype<>'trigger'::regtype and a.grantee=0) private_public, -- 0
+ (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='public' and c.relkind in('r','p')
+   and (pg_get_userbyid(c.relowner)<>'postgres' or not c.relrowsecurity)) bad_owner_rls, -- 0
+ (select rolname from pg_roles where oid=10) bootstrap_role,
+ (select rolsuper::text||'/'||rolcreaterole::text from pg_roles where rolname='postgres') pg_attrs, -- false/true
+ current_setting('createrole_self_grant') self_grant,                             -- ''
+ (select setconfig from pg_db_role_setting where setrole='authenticator'::regrole and setdatabase=0) authenticator_cfg;
+```
+
+Qué revisar en el resultado:
+- `authenticator_cfg` debe contener `pgrst.db_pre_request=public.kora_confirmacion_deuda_pre_request`. **Todo el aislamiento HTTP depende de eso.**
+- **pg_graphql:** viene instalado por defecto en Supabase. Si está presente, quitarlo es un cambio visible para otros consumidores y requiere una decisión explícita.
+- **Funciones `public` SECURITY DEFINER con EXECUTE para PUBLIC:** es lo habitual salvo que se haya revocado. Si aparece alguna, la instalación aborta. Revocarlas queda fuera del alcance de R6 y debe ir en un commit separado y revisado.
+- **Falsos positivos de la regex:** `net\.` y `http_` pueden coincidir con texto inocente dentro de cuerpos de funciones invoker.
+
+### P1-5. Plan de pruebas en producción: las escrituras son permanentes
+`cobra_provision_actions` tiene triggers que impiden UPDATE, DELETE y TRUNCATE. Una "solicitud de prueba" quedará para siempre en el libro de provisiones.
+
+- Probar escrituras de provisión solo si se acepta ese registro permanente, con una nota claramente marcada como prueba.
+- La alternativa es limitar la prueba en producción a lecturas y al guardado de una gestión de tipo `note`/`internal`.
+- Ninguna de las dos genera pagos ni contacto con clientes.
+
+---
+
+## P1 operativo · No bloquea la instalación, sí la operación sostenida
+
+### La huella del catálogo ahora cubre todos los esquemas
+R5 abarcaba `public`, `kora_private` y los esquemas gestionados. R6 incluye todos, entre ellos `auth`, y también las funciones de `storage`/`realtime`, todos los `pg_auth_members` y todos los `pg_db_role_setting`.
+
+Además, el inventario de las 13 tablas gestionadas está escrito de forma fija dentro de las funciones. Por eso, cualquier actualización del proveedor dejará al operador sin acceso: una migración de GoTrue o Storage, o una tabla nueva en `storage`. El sistema falla cerrado y avisa con `cartera_contract_not_active`, pero no hay alerta ni procedimiento de re-sellado.
+
+**Corrección mínima, sin código nuevo:** un runbook con tres pasos.
+1. Volver a ejecutar el gate offline contra un snapshot fresco.
+2. Si cambió el inventario gestionado, hace falta una migración nueva.
+3. Si no cambió, re-sellar con `update kora_private.cartera_contract set fingerprint=kora_private.cartera_catalog_fingerprint()` solo después de ese gate.
+
+---
+
+## P2 · Mejoras, no bloquean
+
+1. **Gestiones fuera del origen clásico.** `cobra_krediya_save_collection` se ejecuta como `kora_cartera_operator`, sujeto a RLS de origen. Si el operador guarda una gestión sobre un crédito de otra tienda presente en el corte, la fila queda con `obligation_id = NULL`. Si la registra Gerencia, queda enlazada. La vista legacy podría no contarla. Hay que decidir si eso es aceptable o documentarlo.
+2. **Excepción de `inicio` para usuarios ordinarios.** El salto de la guarda de deuda no valida `content-profile`. Endurecerlo con `coalesce(h->>'content-profile','public')='public'` implica regenerar el md5 fijado.
+3. **Comparación exacta del `Accept`.** `mime not in('application/json','*/*')` rechazaría un valor compuesto. Verificarlo con el navegador real y supabase-js 2.110.8, no solo con curl.
+4. **Orden de `setconfig`.** La comprobación SQL exige el orden exacto `['statement_timeout=8s','lock_timeout=2s']`, mientras el gate JS ordena el arreglo. Es frágil si alguien vuelve a ejecutar el `ALTER ROLE` en otro orden.
+5. **Presupuesto de 120 llamadas por minuto.** Cada operación de `cobra-krediya-connection` hace primero `permission()`, que llama a `inicio`, así que cuenta doble, y cada llamada recalcula la huella del catálogo. Hay que medir el p95 hosted de `inicio`/`datos` frente al timeout de arranque de 8 s, y comprobar que un flujo normal no provoca un `PT429`.
+6. **`cartera_subject()` ya no tiene EXECUTE para PUBLIC.** Cualquier rol de base de datos distinto de anon, authenticated, service_role u operator que llame `tiene_capacidad_cartera` o `cobra_quality_operator` fallará. Confirmar que no existen tales roles (cron, hooks, workers con rol propio).
+7. **Evidencia con versiones distintas de PostgREST.** `auth-role-proof.py` usa PostgREST v16.5 y la prueba nativa v14.5. Hay que fijar la versión hosted real y citar la prueba que corresponde, en particular para el margen de 30 s, NOTIFY y el kill switch.
+8. **Caché del frontend.** `sidebar.js?v=2.0.37` y `kora-access-control.js?v=2.0.37` cambian de contenido. Conviene subir la versión en todas las páginas y regenerar `kora-build-manifest.json`, o el diálogo "Acerca de" mostrará "Versión no verificada".
+9. **Identificadores reales en los archivos.** El paquete afirma no incluir cuentas reales, pero `kora-access-control.js` y `sidebar.js` contienen UUIDs y nombres de personas. Es código preexistente, no lo introduce R6, pero conviene saberlo para el empaquetado de futuras revisiones.
+10. **Código duplicado.** `resolveBootstrap` está copiado en `sidebar.js` y en `cartera-operador-client.js`. Hoy son idénticos, pero un cambio en uno solo crearía una divergencia silenciosa.
+
+---
+
+## Verificaciones hosted pendientes (ya reconocidas)
+
+- **Auth:** el rol `kora_cartera_session` se puede asignar a la cuenta real. Ningún *access token hook* sobrescribe `role`. Confirmar el método de firma de los JWT (HS256 o asimétrico).
+- **Transición de la cuenta:** cerrar todas las sesiones (logout global) y esperar al menos el `exp` del JWT más 30 s antes de dar por cerrada la transición. Ambos órdenes de transición (primero el rol en Auth o primero el perfil) fallan cerrado, ya lo verifiqué en el código.
+- **Storage y Realtime:**
+  - con el JWT dedicado, todo debe ser rechazado;
+  - con un JWT `authenticated` antiguo, la política `cartera_dedicated_deny` debe aplicar sobre `objects`, `buckets` y `messages`;
+  - las particiones diarias de `realtime.messages` deben tener el mismo dueño que la tabla padre y ningún grant a PUBLIC.
+- **Preparación de `supautils`:** `policy_grants` permite crear políticas en las 3 tablas gestionadas, y `GRANT … TO authenticator` está permitido.
+- **Usuarios ordinarios después de instalar:** probar `gerencia`, `auditoria`, `admin_tienda` (con la guarda de deuda activa) y `asesor`.
+- **Ejecución del operador:** solo puede leer y preparar solicitudes. Ningún pago, ningún contacto con clientes. La autorización de fondos sigue siendo exclusiva del propietario y está vacía hasta un insert separado.
+
+---
+
+**Para mañana:** se puede instalar si se cumplen dos cosas. Primero, la consulta de P1-4 sale limpia. Segundo, se cierran P1-1 (el cuerpo de la guarda actual y la prueba nueva) y P1-2 (los hashes y la aprobación de la migración de fondos). Lo realista es reservar tiempo por si alguna puerta hosted aborta la instalación.

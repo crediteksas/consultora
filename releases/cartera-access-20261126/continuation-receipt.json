@@ -1,0 +1,150 @@
+{
+  "at_utc": "2026-11-27T00:46:03.896721+00:00",
+  "base_commit": "094306a29e8d2306a15e4a9b95b2df6739d86353",
+  "production_writes": 0,
+  "active_source_changes": 0,
+  "accounts_changed": 0,
+  "published": false,
+  "activation_ready": false,
+  "original_proposal_files_preserved": 190,
+  "local_tests": {
+    "pass": 39,
+    "fail": 0,
+    "sha256": "5e603dd9f036bad8eb1691506bc7ae1d8c99f93e04c2b664f07b419847452cbc"
+  },
+  "visual_cases": 4,
+  "r1": {
+    "verdict": "CHANGES REQUIRED",
+    "source_only": true,
+    "fixes_implemented": true
+  },
+  "r2": {
+    "status": "review_complete",
+    "reset_local": "2026-11-26 17:30 America/Bogota",
+    "input_sha256": "010115b05030cacb8b841515443fb7cb465b7ecbea1b258f9dfca854326d1f49",
+    "input_file_sha256": "010115b05030cacb8b841515443fb7cb465b7ecbea1b258f9dfca854326d1f49",
+    "sources_unchanged": true,
+    "source_count": 30,
+    "production_records": 0,
+    "credential_values": 0,
+    "verdict": "CHANGES REQUIRED",
+    "fixes_prepared": true
+  },
+  "known_identity_schema_grant_blocker": false,
+  "managed_provider_and_actual_session_verification_pending": true,
+  "new_migration_created": false,
+  "r3": {
+    "verdict": "CHANGES REQUIRED",
+    "code_findings_prepared": true,
+    "source_only": true,
+    "input_sha256": "3a2f7dd4cebb3e25016685f5b52fb803633ed70a427b9169d8de72412f864ac9"
+  },
+  "r4": {
+    "status": "review_complete",
+    "authorization_question_pending": false,
+    "input_sha256": "bc4cc82329bd45e9ddbfe49bd89a20faaf997b0c279987d7a3cebd0d0e28bf1a",
+    "production_records": 0,
+    "credential_values": 0,
+    "managed_inventory_sharing_authorized": true,
+    "source_count_verified": 45,
+    "review_output": "reviews/code-r4-authorized-review.txt",
+    "verdict": "CHANGES REQUIRED (narrow)",
+    "remaining_test_and_runbook_fixes_prepared": true
+  },
+  "provider_reconstruction": {
+    "development_branch": "cartera-validacion-20261126",
+    "project_ref": "mlkbjmzroxgyuoytnhue",
+    "branch_id": "ce888cf7-8bf7-4345-85b3-ea230809957b",
+    "automatic_migrations_status": "MIGRATIONS_FAILED",
+    "reconstructed_public_tables": 38,
+    "last_replayed_migration": "20260722035817",
+    "production_data_copied": false,
+    "schema_only_dump_bytes": 1739548,
+    "schema_top_level_data_writes": 0,
+    "local_container": "cartera-reconstruction-20261126",
+    "provider_validation_passed": false,
+    "branch_deletion_status": "deleted_verified",
+    "full_private_schema_extraction": "auto_review_rejected_not_executed",
+    "local_schema_restore": "atomic_failure_missing_dependency",
+    "candidate_installed": false,
+    "deletion_explicitly_authorized": true,
+    "branch_list_after_deletion": [
+      "main"
+    ]
+  },
+  "r5": {
+    "status": "review_complete",
+    "input_sha256": "f068f5fa27b2479abca9d66f21217d4e885e1f69c461bb63693773fd6d9c5de4",
+    "source_count": 47,
+    "transmitted_files": 15,
+    "production_records": 0,
+    "credential_values": 0,
+    "verdict": "APPROVED PREPARATION",
+    "review_output": "reviews/code-r5-review.txt",
+    "review_sha256": "bdf5357f4f3ba784bed30c8f83f0540579b07f4cee9d98a52285c5b7d4ad07af",
+    "all_source_hashes_reverified": true,
+    "publication_approval": false
+  },
+  "pending_approval_questions": 0,
+  "remaining_gates": [
+    "managed-provider-compatibility-and-partition-behavior",
+    "real-http-jwt-storage-realtime-signed-url-backend-and-rate-validation",
+    "ordinary-and-Andrea-sessions",
+    "gate-integration-and-official-publication-pipeline",
+    "valid-provision-source-files-and-prior-use-supports"
+  ],
+  "session_role_compatibility": {
+    "status": "R6 implementation under test and pending code review",
+    "integration_delta_written": true,
+    "candidate_installed": false,
+    "real_users_changed": 0,
+    "official_local_services": {
+      "passed": true,
+      "assertions": 60,
+      "distinct_assertion_names": 51,
+      "scope": "Local official Auth/PostgREST + synthetic SQL only; does not certify KORA integration or hosted provider.",
+      "source_sha256": "0e8a2ba676c76bdc5bc425b4786307c274971a5f957cbab4bb34d50801a4fb93"
+    },
+    "backend_source_snapshot_checks": {
+      "passed": true,
+      "cases": 11,
+      "live_backend_requests": 0,
+      "messages": 0,
+      "scope": "Exact deployed entrypoint snapshots (trailing newline normalized for source comparison), mocked claim RPC; no live backend or capability validation certified."
+    },
+    "existing_backend_tests": {
+      "pass": 8,
+      "fail": 0
+    },
+    "authorized_schema_restore": {
+      "restored": false,
+      "atomic": true,
+      "existing_schemas_only": [
+        "public",
+        "kora_private",
+        "cobros_private"
+      ],
+      "missing_dependency": "inventario_control",
+      "new_schema_exports": 0,
+      "provider_certified": false
+    },
+    "existing_r5_fingerprint_select_ms": 989.457,
+    "fingerprint_scope": "One read-only EXPLAIN ANALYZE of existing R5 SELECT; not R6 or request latency certification",
+    "original_proposal_files_reverified": 190,
+    "r5_source_files_reverified": 42,
+    "r5_source_files_and_diffs_reverified": 47,
+    "final_local_proof_status": "passed",
+    "final_local_proof": "compatibility-session-role/auth-role-proof-result.json",
+    "scope_of_notify_test": "Notification sent; cache reload completion not demonstrated",
+    "scope_of_invalid_role_test": "Rejected; fallback not distinguished",
+    "local_resources": {
+      "proof_containers_removed": true,
+      "proof_networks_removed": true,
+      "prior_stopped_container_and_volumes_preserved": true,
+      "vm_stop_pending": true
+    },
+    "design_review_r4": "CHANGES REQUIRED (fixture evidence only, two assertions); design accepted, no integration/deployment approval",
+    "design_review": "APPROVED DESIGN PREPARATION",
+    "remaining_code_review": true
+  }
+}

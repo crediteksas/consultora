@@ -27,6 +27,7 @@
     $('metrics').innerHTML=items.map(([label,value])=>`<article class="metric card"><small>${esc(label)}</small><strong>${esc(value)}</strong></article>`).join('');
   }
 
+  function hasFilters() { return ['query','platform','status','origin'].some(id => String($(id)?.value || '').trim()); }
   function empty(title, text) { return `<div class="empty"><strong>${esc(title)}</strong>${esc(text)}</div>`; }
   function actionButtons(row) {
     if (!canManage()) return '';
@@ -34,20 +35,24 @@
   }
   function portfolioTable(filtered, mode='portfolio') {
     const visible=mode==='cobra'?filtered.filter(r=>['late','delinquent','loss'].includes(r.status)||D.number(r.broken_promises)>0):filtered;
+    if(!visible.length && hasFilters()) return empty('Sin coincidencias con estos filtros','Cambia la búsqueda o los filtros para consultar otros créditos.');
     if(!visible.length) return empty(mode==='cobra'?'No hay gestiones pendientes':'No hay créditos para mostrar',mode==='cobra'?'La cola de Cobra está al día.':'Los créditos aparecerán al registrarse el pago al aliado.');
     return `<div class="table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Crédito</th><th>Tienda</th><th>Original</th><th>Pagado</th><th>Saldo</th><th>Estado</th><th>Nova</th><th>Acciones</th></tr></thead><tbody>${visible.map(r=>`<tr><td><b>${esc(r.cliente_nombre)}</b><small>${esc(r.cliente_documento||'Sin cédula vinculada')}</small></td><td><b>${esc(r.external_credit_id)}</b><small>${esc(r.plataforma)}</small></td><td>${esc(r.tienda||r.origen_codigo||'Sin tienda')}</td><td class="amount">${D.money(r.original_amount)}</td><td class="amount">${D.money(r.validated_repayments)}</td><td class="amount">${D.money(r.outstanding_amount)}</td><td><span class="pill ${esc(r.status)}">${esc(D.statusLabel(r.status))}</span></td><td><span class="pill ${esc(r.nova_status)}">${esc(D.statusLabel(r.nova_status))}</span></td><td>${actionButtons(r)}</td></tr>`).join('')}</tbody></table></div>`;
   }
   function renderNova(filtered) {
+    if(!filtered.length && hasFilters()) return empty('Sin coincidencias con estos filtros','Cambia la búsqueda o los filtros para consultar las decisiones registradas.');
     if(!filtered.length) return empty('Aún no hay decisiones asociadas','Las decisiones llegarán desde Nova por el canal de servicio seguro.');
     return `<div class="table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Plataforma</th><th>Crédito</th><th>Decisión</th><th>Regla</th><th>Origen</th></tr></thead><tbody>${filtered.map(r=>`<tr><td><b>${esc(r.cliente_nombre)}</b><small>${esc(r.cliente_documento||'')}</small></td><td>${esc(r.plataforma)}</td><td>${esc(r.external_credit_id)}</td><td><span class="pill ${esc(r.nova_status)}">${esc(D.statusLabel(r.nova_status))}</span></td><td>${esc(r.nova_rule_version||'—')}</td><td>${esc(r.tienda||r.origen_codigo||'—')}</td></tr>`).join('')}</tbody></table></div>`;
   }
   function renderPerformance(filtered) {
     const s=D.summarize(filtered), evaluated=Math.max(0,s.credits-s.preNova), good=s.current+s.closed;
-    const cards=[['Créditos evaluables',evaluated,'Créditos vinculados a una decisión de Nova.'],['Buen comportamiento',good,'Al día o totalmente pagados.'],['Mora o pérdida',s.risk,'Resultado observado, sin convertir datos faltantes en mora.'],['Promesas incumplidas',s.brokenPromises,'Señal operativa para retroalimentar futuras reglas.']];
+    const cards=[['Créditos evaluables',evaluated,'Créditos vinculados a una decisión de Nova.'],['Activos, al día o pagados',good,'Estado registrado en KORA. Confirma el comportamiento con el último corte de la plataforma.'],['Mora o pérdida',s.risk,'Resultado observado, sin convertir datos faltantes en mora.'],['Promesas incumplidas',s.brokenPromises,'Señal operativa para retroalimentar futuras reglas.']];
     $('performanceContent').innerHTML=cards.map(([title,value,text])=>`<article class="card"><b>${esc(title)}</b><strong style="display:block;font:800 26px Montserrat;margin-top:10px">${esc(value)}</strong><p>${esc(text)}</p></article>`).join('');
   }
 
   const eventLabels = {contacted:'Cliente contactado',contact_attempt:'Intento de contacto',promise:'Promesa de pago',promise_kept:'Promesa cumplida',promise_broken:'Promesa incumplida',dispute:'Reclamo',escalated:'Escalado',note:'Nota'};
+  const channelLabels = {call:'Llamada',whatsapp:'WhatsApp',sms:'SMS',email:'Correo',platform:'Plataforma',internal:'Interno'};
+  function channelLabel(value) { return value ? (Object.hasOwn(channelLabels,value) ? channelLabels[value] : 'Canal por verificar') : 'Sin canal'; }
   function dateLabel(value) { if(value && (Number.isNaN(Date.parse(value)) || /^\d{4}-\d{2}-\d{2}$/.test(value) && !D.validDay(value)))return 'Fecha por verificar'; return value ? (D.validDay(value) ? value.split('-').reverse().join('/') : new Intl.DateTimeFormat('es-CO',{timeZone:'America/Bogota',dateStyle:'short',timeStyle:'short'}).format(new Date(value))) : 'Sin registro'; }
   function collectionCards(items) {
     if (!eventsAvailable) return empty('Historial no disponible','No se puede determinar la agenda completa. Actualiza para volver a consultar.');
@@ -63,14 +68,14 @@
     $('cobraContent').innerHTML=collectionCards(visible);
     $('promisesContent').innerHTML=collectionCards(items.filter(x=>x.promise || x.reason==='Promesa incumplida registrada'));
     const scopedEvents=collectionEvents.filter(e=>filtered.some(r=>r.id===e.obligation_id));
-    $('historyContent').innerHTML=!eventsAvailable?empty('Historial no disponible','Actualiza para volver a consultar.'):scopedEvents.length?`<div class="collection-list">${scopedEvents.map(e=>{const r=filtered.find(r=>r.id===e.obligation_id);return `<article class="collection-card"><h3>${esc(r.cliente_nombre)} · ${esc(r.external_credit_id)}</h3><p>${esc(eventLabels[e.event_type]||e.event_type)} · ${esc(e.channel||'Sin canal')} · ${esc(dateLabel(e.created_at))}</p><p>${esc(e.note||'Sin nota')}</p>${e.promise_date?`<p>Fecha prometida: ${esc(dateLabel(e.promise_date))} · ${e.promise_amount>0?D.money(e.promise_amount):'Sin valor'}</p>`:''}</article>`;}).join('')}</div>`:empty('Sin gestiones registradas','Las gestiones que guardes aparecerán aquí.');
+    $('historyContent').innerHTML=!eventsAvailable?empty('Historial no disponible','Actualiza para volver a consultar.'):scopedEvents.length?`<div class="collection-list">${scopedEvents.map(e=>{const r=filtered.find(r=>r.id===e.obligation_id);return `<article class="collection-card"><h3>${esc(r.cliente_nombre)} · ${esc(r.external_credit_id)}</h3><p>${esc(eventLabels[e.event_type]||e.event_type)} · ${esc(channelLabel(e.channel))} · ${esc(dateLabel(e.created_at))}</p><p>${esc(e.note||'Sin nota')}</p>${e.promise_date?`<p>Fecha prometida: ${esc(dateLabel(e.promise_date))} · ${e.promise_amount>0?D.money(e.promise_amount):'Sin valor'}</p>`:''}</article>`;}).join('')}</div>`:empty('Sin gestiones registradas','Las gestiones que guardes aparecerán aquí.');
     $('exportCollections').disabled=!eventsAvailable||!filtered.length;
   }
   function showHistory(id) {
     const row=rows.find(r=>r.id===id);if(!row)return;
     action='history';$('modalTitle').textContent=`Historial · ${row.cliente_nombre}`;$('modalSubmit').hidden=true;$('modalMessage').hidden=true;
     const items=collectionEvents.filter(e=>e.obligation_id===id);
-    $('modalFields').innerHTML=`<div class="field full">${!eventsAvailable?'No fue posible consultar el historial.':items.length?items.map(e=>`<article><strong>${esc(eventLabels[e.event_type]||e.event_type)}</strong><p>${esc(dateLabel(e.created_at))} · ${esc(e.channel||'Sin canal')} · ${esc(e.actor_type)}</p><p>${esc(e.note||'Sin nota')}</p>${e.promise_date?`<p>Compromiso: ${esc(dateLabel(e.promise_date))} · ${e.promise_amount>0?D.money(e.promise_amount):'Sin valor'}</p>`:''}</article>`).join('<hr>'):'Sin gestiones registradas.'}</div>`;
+    $('modalFields').innerHTML=`<div class="field full">${!eventsAvailable?'No fue posible consultar el historial.':items.length?items.map(e=>`<article><strong>${esc(eventLabels[e.event_type]||e.event_type)}</strong><p>${esc(dateLabel(e.created_at))} · ${esc(channelLabel(e.channel))} · ${esc(e.actor_type)}</p><p>${esc(e.note||'Sin nota')}</p>${e.promise_date?`<p>Compromiso: ${esc(dateLabel(e.promise_date))} · ${e.promise_amount>0?D.money(e.promise_amount):'Sin valor'}</p>`:''}</article>`).join('<hr>'):'Sin gestiones registradas.'}</div>`;
     $('modalBg').hidden=false;
   }
   function exportCollections() {
@@ -100,7 +105,7 @@
     const pageSize=500, all=[];
     for(let from=0;;from+=pageSize){
       const result=await sb.from('creditos_cartera_operaciones').select('*')
-        .order('ally_paid_at',{ascending:false,nullsFirst:false}).range(from,from+pageSize-1);
+        .order('ally_paid_at',{ascending:false,nullsFirst:false}).order('id').range(from,from+pageSize-1);
       if(result.error) return result;
       all.push(...(result.data||[]));
       if(!result.data||result.data.length<pageSize) return {data:all,error:null};
@@ -172,5 +177,5 @@
   $('agendaScope').addEventListener('change',render);
   $('exportCollections').addEventListener('click',exportCollections);
   $('refresh').addEventListener('click',load); $('modalCancel').addEventListener('click',closeModal); $('actionForm').addEventListener('submit',submitAction);
-  waitForShell().then(context=>{sb=context.sb;profile=context.perfil;$('app').hidden=false;load();});
+  waitForShell().then(context=>{sb=context.sb;profile=context.perfil;if(profile.rol==='operador_cartera')$('classicScope').textContent=profile.tienda_codigo?'Cartera clásica del origen '+profile.tienda_codigo+'. El seguimiento general de KrediYA se consulta en Calidad KrediYA.':'Cartera clásica pendiente de asignar un origen. La lista vacía no significa que no existan créditos. El seguimiento general de KrediYA está en su pestaña.';$('app').hidden=false;load();});
 })();

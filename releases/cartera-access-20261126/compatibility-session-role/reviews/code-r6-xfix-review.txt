@@ -1,0 +1,64 @@
+# Verdict: NOT YET APPROVED. One exact blocker remains (X3, cleanup path)
+
+X1, X2 and X4 are closed. X3 is closed for `user_id` but not for `session_id`.
+
+## Blocker: an unverified receipt `session_id` can widen cleanup to any session of that user
+
+In `hosted-profile-lifecycle.mjs`, `validateSession` contains:
+
+```js
+(sid&&c.session_id!==sid)
+```
+
+A falsy `sid` (null, `""`, missing) therefore matches **any** session of `uid`. In cleanup mode, `sid` comes from `receipt.sessions[i].session_id`. The receipt check verifies only `scope_sha256`, the length, and `user_id`. It never checks `session_id`.
+
+A receipt with `session_id: null` or `""`, whether corrupted or edited, combined with a `browser-state-latest-i.json` holding a token from another real session of that user, would pass `validateSession`. `revokeOwnSession` would then sign out that other device. That breaks the guarantee that only verified pairs are revoked, and it breaks the lifecycle test's claim that stale browser state cannot revoke another device.
+
+**Fix (one token, no behavior loss):**
+
+```js
+// hosted-profile-lifecycle.mjs validateSession
+...||c.session_id!==sid)throw Error('session scope');
+```
+
+This costs nothing on the X1 path. A null `sid` there only comes from a token that failed to decode or lacks a string `session_id`, and `validateSession` already throws on both. Those sessions already end in `pending` with `session_id: null`, which is the intended X1 behavior. In create mode, `created.sid` is the decoded id, so strict equality holds.
+
+**Add one fictional test:**
+
+```js
+test('null or empty sid never acts as a wildcard',async()=>{
+ for(const bad of[null,'',undefined]){const f=fixture([]);await assert.rejects(revokeOwnSession({session:session(2000),uid,sid:bad,issuer,now:1000000,...f}));assert.equal(f.calls.length,0);}
+});
+```
+
+Optionally, also reject non-UUID `session_id` values in the cleanup receipt check, next to the `user_id` check.
+
+## Closed items
+
+- **X1:** The returned session is pushed to `newlyCreated` before the identity check and validation. The decode failure path stores `sid: null`. Every null-sid path fails validation and lands in `pending` with null.
+- **X2:**
+  - **Create mode:** `ownedOut` is set after `mkdirSync`.
+  - **Cleanup mode:** `ownedOut` is set only after the checksum, count and all `user_id`s match.
+  - **Catch path:** writes `pending-cleanup-<mode>-<ts>.json` with `wx`.
+- **X3 (user part):** `user_id` is stored per session. Catch-path pending pairs come only from `verifiedReceipt` or from sessions this process created.
+- **X4:**
+  - **Query:** coverage is stripped only when both the zero-arg bootstrap and the role are absent.
+  - **Gate:** `session_role!=null` marks the install as present. A role-only install yields "bootstrap missing", and a bootstrap without the role fails the attributes check.
+  - **Overloaded bootstrap without the zero-arg form:** fails closed via the missing coverage object.
+  - **Pins:** cover actual sources only, with no fallback.
+
+## Non-blocking hardening (report separately, not part of this patch)
+
+1. `mkdirSync(out,{recursive:true})` does not fail on a directory created between `existsSync` and `mkdir`. Create the parent recursively, then create `out` non-recursively so EEXIST is raised.
+2. Cleanup rewrites `private-receipt.json` in place. A temp file plus `renameSync` would avoid a corrupt receipt on a crash.
+3. The pending filename is `Date.now()` only, and a collision is silently dropped. Add `process.pid` or a random suffix.
+4. `build-r6-gate.py`:
+   - It uses `assert`, which is stripped under `-O`. Use explicit `raise`.
+   - Several `.replace()` calls are not count-checked. Pinning the generated candidate SHAs would close that.
+5. `r6-shell.test.mjs` builds its harness through unchecked string replaces. Assert that each replace changed the text. I checked the current tests and they would fail rather than pass vacuously.
+
+## Hosted conditions (unchanged, plus one)
+
+The Native35 scenarios must be re-run against the new query (`candidate/catalog-query.sql` SHA `19ef9ae8…`), because the role-only collector changed after they last passed.
+
+Once the strict `sid` fix and its test land, and `node --check` plus the suite pass, this becomes **APPROVED FINAL CODE CONDITIONAL ON HOSTED CHECKS**.

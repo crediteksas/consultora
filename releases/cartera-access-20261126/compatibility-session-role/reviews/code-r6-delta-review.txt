@@ -1,0 +1,125 @@
+# BLOQUEADO
+
+Revisé solo el código que pegaste, sin herramientas. No ejecuté tests, `tsc` ni `node --check`, ni comparé contra `main`. Hay dos bloqueos concretos, ambos en el punto 4. Los puntos 1, 2, 3 y 5 no tienen bloqueos, pero dejo fixes de bajo costo y dos discrepancias que conviene confirmar antes de ejecutar nada.
+
+---
+
+## Bloqueos
+
+### B1. La limpieza puede declarar sesiones revocadas que siguen vivas
+`hosted-profile-proof.mjs`, rama `cleanup-own-test-sessions`:
+
+```js
+if(error&&error.status!==401&&error.status!==403&&error.status!==404)throw Error('cleanup failed');
+```
+
+`signOut(jwt,'local')` necesita un access token vigente. El token dura cerca de 1 hora por defecto. Si la limpieza corre después:
+- GoTrue responde 401.
+- El script lo trata como éxito y borra los archivos locales.
+- Escribe `own_sessions_revoked:3`.
+
+Pero la sesión en `auth.sessions` y su refresh token siguen válidos. Además, si el navegador usó el `browser-state`, supabase-js rotó el refresh token, así que el archivo ya no refleja el estado actual. El recibo quedaría afirmando algo falso, lo que contradice la regla de reporte honesto.
+
+**Fix exacto:**
+1. En `create`, guardar `claims.session_id` de cada sesión en `private-receipt.json`. No es una credencial.
+2. En `cleanup`:
+   - Si `claims.exp*1000 <= Date.now()+30000`, refrescar con un cliente anon (`refreshSession({refresh_token})`).
+   - Verificar `user.id` y llamar a `signOut(nuevoToken,'local')`.
+   - No aceptar 401, 403 ni 404 como éxito.
+3. Después del `signOut`, comprobar que `refreshSession` con el último refresh token falla.
+4. Si algo no se puede verificar:
+   - No borrar ese par de archivos.
+   - Registrar `own_sessions_pending` con el `session_id`.
+   - Revocar del lado del servidor solo con `delete from auth.sessions where id=$session_id and user_id=$uid`. Así sigue acotado a sus propias sesiones y no toca otros dispositivos.
+5. `own_sessions_revoked` debe contar solo las revocaciones verificadas.
+
+### B2. El `catch` borra archivos que el script no creó
+La precondición revisa `private-receipt` y `session-i`, pero no `browser-state-i`. Si existe un `browser-state-0.json` previo:
+- `writeFileSync(...,{flag:'wx'})` falla.
+- El `catch` hace `unlinkSync` de `browser-state-0.json`, que no es suyo.
+
+**Fix:**
+- Agregar `browser-state-i.json` a la precondición `existsSync`.
+- Registrar en `newlyCreated` cada ruta escrita con éxito, y borrar en el `catch` solo esas rutas.
+
+---
+
+## Confirmar antes de ejecutar (regla 1 de CLAUDE.md)
+
+### C1. Orden entre el baneo y la prueba de sesión
+La plantilla de activación exige que el operador tenga `banned_until>now()`. Con un usuario baneado, `verifyOtp` falla. Entonces `create-own-test-sessions` no puede crear la sesión del operador mientras siga baneado.
+
+¿En qué momento corre la prueba? ¿Antes del baneo con el rol `admin_tienda`, o después de un desbaneo explícito que no está en este delta?
+
+### C2. Capacidades en el scope frente al contrato SQL
+- El scope exige `["manage","manage","authorizer"]`.
+- La plantilla exige exactamente un `credit_portfolio_operators` activo, el operador, con `manage`. El auditor no tiene fila de operador.
+
+Si el segundo `manage` es solo una etiqueta del scope, conviene renombrarlo (por ejemplo `audit`) para que no parezca un segundo operador. Si no, hay una inconsistencia.
+
+---
+
+## Por punto
+
+**1. Menús: sin bloqueo, pero no verificado contra la base.**
+- La experiencia `portfolio` es exclusiva y correcta:
+  - Exige `capabilities.cartera === true`.
+  - Solo permite `creditos-cartera.html` más las rutas públicas.
+  - `homeFor` devuelve `creditos-cartera.html`.
+  - El chequeo de `activo` ocurre antes.
+- No puedo confirmar sin el diff que `creditos-cartera.html` en `STORE_ROUTES_BY_ROLE`, `STORE_NAVIGATION` y la sección corporativa `CRÉDITOS Y CARTERA` ya existían. Si son nuevas, serían una ampliación de alcance para tienda y corporativo.
+- `navigation-shell.test.mjs` no cubre `operador_cartera`. Recomiendo agregar casos:
+  - Con `cartera:true`: navegación de una sola entrada.
+  - Con `cartera:false`: navegación vacía.
+  - `ventas.html` denegada para el operador.
+  - `app` redirige a `creditos-cartera.html`.
+  - Snapshot de `navigationFor` para `gerencia`, `auditoria`, `admin_tienda` y `asesor`, para demostrar que no cambiaron.
+
+**2. Catálogo: sin bloqueo.**
+- `cartera_coverage` se omite si `to_regprocedure('public.cartera_operador_inicio()')` es nulo, así que se conserva la forma anterior.
+- `to_regclass` y `to_regrole` evitan errores cuando faltan objetos.
+- `session_memberships` usa `inherit_option` y `set_option`, que solo existen desde PostgreSQL 16. En PG15 la consulta entera falla aunque luego se omita la cobertura. Falla de forma cerrada, pero hay que verificar `server_version >= 16` en hosted y en el harness nativo.
+- No vi `cartera-coverage-gate.mjs`. Para que no exista bypass por instalación parcial, el gate debe rechazar el caso en que falta `cartera_coverage` pero el snapshot contiene algún objeto gestionado:
+  - funciones `public.cartera_operador_*` o `kora_private.cartera_*`
+  - la policy `cartera_dedicated_deny`
+  - el esquema `kora_cartera_policy`
+
+  Confírmalo en ese archivo.
+
+**3. Mocks y procedencia: sin bloqueo.**
+- La prueba de Cobra:
+  - sigue validando el candidato anterior contra `source-manifest`;
+  - acepta reemplazos explícitos sin sobrescribir;
+  - fija el recibo anterior a `catalog-query-v1.sql`.
+- En `source-batch`, el fixture sintético vuelve a fijar el SHA de la consulta actual. Es correcto como unidad, pero perdió el vínculo del recibo nativo `native17` con el colector viejo. Fix de una línea en `fixture()`, antes de sobrescribir:
+  `assert.equal(JSON.parse(await readFile(path.join(base,'native-result.json'))).catalog_query_sha256, sha(await readFile(path.join(root,'scripts/supabase-compat/catalog-query-v1.sql'))))`
+  Esto aplica si `native17` se capturó con v1. Si se capturó con otra versión, usar el archivo correspondiente.
+- Opcional: fijar el SHA de `active-assets.json` en el test. Hoy, editar ese archivo junto con el destino basta para pasar.
+
+**4. Prueba de sesión: bloqueado por B1 y B2.** El resto está bien:
+- La llave `service_role` queda solo en memoria y nunca va al `browser-state`.
+- `generateLink` no envía correo.
+- Valida `sub`, `role`, `iss`, `is_anonymous` y `exp`.
+- Hace `getUser` del lado del servidor.
+- Usa `0600` y `0700` con `wx`.
+- No registra datos sensibles.
+- `'local'` limita el `signOut` a su propia sesión.
+
+Efecto secundario a documentar: `generateLink` invalida cualquier magic link pendiente de esos usuarios y actualiza `last_sign_in_at`.
+
+**5. Plantilla de activación: sin bloqueo.**
+- Valida UUIDs distintos y el sello con regex.
+- Aplica `for update` a los perfiles y usa `search_path=''`.
+- Verifica perfiles, capacidad, roles Auth y baneo, además de que el estado está vacío y que el sello de instalación coincide.
+- Hace un único `update` de rol y el único enlace del autorizador.
+- No escribe saldos, fondeos ni pagos, y no afirma que haya ocurrido la transición Auth ni la revocación.
+
+Fix menor recomendado contra una carrera:
+- Agregar `for update` al `select` de `kora_private.cartera_contract`.
+- Después del `insert ... on conflict do nothing`, validar con `if not exists(select 1 from public.cobra_provision_authority where singleton and user_id=owner_id) then raise exception 'cartera_activation_authority_mismatch'; end if;`
+
+---
+
+**Para aprobar:** aplicar B1 y B2, responder C1 y C2, y confirmar el gate del punto 2. Con eso lo marco como APROBADO DELTA.
+
+Aparte: el `kora-access-control.js` candidato contiene identidades reales en comentarios y en los sets de UUID. Parecen preexistentes y quedan fuera de este delta, así que no los repito aquí.

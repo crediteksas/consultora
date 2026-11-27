@@ -1,0 +1,16 @@
+**APPROVED FINAL CODE — CONDITIONAL ON HOSTED CHECKS.**
+
+What I verified:
+
+- **These files are not in this worktree.** `hosted-profile-lifecycle*.mjs` isn't tracked, untracked, or modified anywhere under `consultora/`. I checked the pasted code by copying it verbatim into a temporary directory. This approval covers the pasted text. Before merging, confirm the committed files match it byte for byte.
+- **Local run of the pasted code:** `node --check` passed on both files, and `node --test` showed 4/4 pass, 0 fail.
+- **The fix does what it claims:**
+  - `c.session_id!==sid` is now a strict comparison. A JWT that passes the UUID regex can only match a `sid` that is the exact same UUID, so `null`, `''` and `undefined` always throw.
+  - `validateSession` runs synchronously as the first statement in `revokeOwnSession`, so a bad `sid` rejects before `refreshSession` or `signOut` is ever called. The new test asserts `calls.length===0`, which proves this.
+  - After a refresh, `validateSession` runs again against the same `sid`. A refreshed token carrying a different session is rejected before logout, which test 3 covers.
+- **Scope:** the only change in logic is the strict comparison. There's no new design or extra hardening, and the tests use only fictional data (`fixture.invalid`, fake tokens).
+
+I did not verify the following, so these stay with the hosted checks:
+- The caller sites, which you describe as create passing `created.sid` and cleanup passing the verified receipt sid. That code wasn't included.
+- The two Native35 reruns with query `19ef9ae8`.
+- How the real Supabase `admin.signOut(jwt,'local')` and the refresh error codes (`refresh_token_not_found` / `session_not_found`) behave against the hosted project.

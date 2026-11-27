@@ -1,0 +1,97 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "slug": "b2b-pedido-mail",
+      "scenario": "wrong-method",
+      "status": 405,
+      "deliveries": 0,
+      "claimCalls": 0,
+      "snapshot_sha256": "06ab55d2763abf11f5406941d59d054a646b1427bc07736fdb13267946c09ac0"
+    },
+    {
+      "slug": "b2b-pedido-mail",
+      "scenario": "malformed-body",
+      "status": 400,
+      "deliveries": 0,
+      "claimCalls": 0,
+      "snapshot_sha256": "06ab55d2763abf11f5406941d59d054a646b1427bc07736fdb13267946c09ac0"
+    },
+    {
+      "slug": "b2b-pedido-mail",
+      "scenario": "unknown-capability",
+      "status": 403,
+      "deliveries": 0,
+      "claimCalls": 1,
+      "snapshot_sha256": "06ab55d2763abf11f5406941d59d054a646b1427bc07736fdb13267946c09ac0"
+    },
+    {
+      "slug": "b2b-pedido-mail",
+      "scenario": "forged-role-header",
+      "status": 403,
+      "deliveries": 0,
+      "claimCalls": 1,
+      "snapshot_sha256": "06ab55d2763abf11f5406941d59d054a646b1427bc07736fdb13267946c09ac0"
+    },
+    {
+      "slug": "b2b-pedido-mail",
+      "scenario": "claim-error",
+      "status": 500,
+      "deliveries": 0,
+      "claimCalls": 1,
+      "snapshot_sha256": "06ab55d2763abf11f5406941d59d054a646b1427bc07736fdb13267946c09ac0"
+    },
+    {
+      "slug": "b2b-pedido-mail",
+      "scenario": "retired-order",
+      "status": 410,
+      "deliveries": 0,
+      "claimCalls": 0,
+      "snapshot_sha256": "06ab55d2763abf11f5406941d59d054a646b1427bc07736fdb13267946c09ac0"
+    },
+    {
+      "slug": "krediya-report-mail",
+      "scenario": "wrong-method",
+      "status": 405,
+      "deliveries": 0,
+      "claimCalls": 0,
+      "snapshot_sha256": "79577b13c3c6aaf0e35061ae3edc3fe9023a71fbaadd3d28e48c670d3ef8c2a7"
+    },
+    {
+      "slug": "krediya-report-mail",
+      "scenario": "malformed-body",
+      "status": 400,
+      "deliveries": 0,
+      "claimCalls": 0,
+      "snapshot_sha256": "79577b13c3c6aaf0e35061ae3edc3fe9023a71fbaadd3d28e48c670d3ef8c2a7"
+    },
+    {
+      "slug": "krediya-report-mail",
+      "scenario": "unknown-capability",
+      "status": 403,
+      "deliveries": 0,
+      "claimCalls": 1,
+      "snapshot_sha256": "79577b13c3c6aaf0e35061ae3edc3fe9023a71fbaadd3d28e48c670d3ef8c2a7"
+    },
+    {
+      "slug": "krediya-report-mail",
+      "scenario": "forged-role-header",
+      "status": 403,
+      "deliveries": 0,
+      "claimCalls": 1,
+      "snapshot_sha256": "79577b13c3c6aaf0e35061ae3edc3fe9023a71fbaadd3d28e48c670d3ef8c2a7"
+    },
+    {
+      "slug": "krediya-report-mail",
+      "scenario": "claim-error",
+      "status": 500,
+      "deliveries": 0,
+      "claimCalls": 1,
+      "snapshot_sha256": "79577b13c3c6aaf0e35061ae3edc3fe9023a71fbaadd3d28e48c670d3ef8c2a7"
+    }
+  ],
+  "production_requests": 0,
+  "production_writes": 0,
+  "messages": 0,
+  "scope": "Exact deployed entrypoint snapshots (trailing newline normalized for source comparison), mocked claim RPC; no live backend or capability validation certified."
+}

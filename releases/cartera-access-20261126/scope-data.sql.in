@@ -1,0 +1,138 @@
+-- Fixed datasets only. No client-selected relation, column, join, operator or SQL.
+grant execute on function public.rol_actual(),public.tiene_capacidad_cartera(text),public.cobra_quality_operator(),public.creditos_cartera_puede_leer(text),public.cobra_krediya_save_collection(uuid,uuid,text,text,text,date,numeric),public.cobra_krediya_history_cuts(uuid) to kora_cartera_operator;
+-- The shared immutable trigger prepares this boolean expression even for a
+-- request. These boolean helpers and own authority lookup grant no funding,
+-- authorization or execution action; both INSERT bounds still require request.
+grant execute on function public.cobra_provision_authorizer(),public.cobra_quality_importer(),public.tiene_capacidad_aliados(text) to kora_cartera_operator;
+grant select(user_id) on public.cobra_provision_authority to kora_cartera_operator;
+create policy cartera_tech_authority_allow on public.cobra_provision_authority for select to kora_cartera_operator using(user_id=(select public.cartera_subject()));
+create policy cartera_tech_authority_bound on public.cobra_provision_authority as restrictive for select to kora_cartera_operator using(user_id=(select public.cartera_subject()));
+grant select(id,operation_id,credito_id,cliente_id,plataforma,external_credit_id,origen_codigo,cliente_nombre_snapshot,cliente_documento_snapshot,original_amount,outstanding_amount,ally_paid_at,first_due_date,next_due_date,status,pre_nova,nova_authorization_id) on public.credit_portfolio_obligations to kora_cartera_operator;
+grant select(id,nombre_completo,cedula) on public.clientes to kora_cartera_operator;
+grant select(codigo,nombre) on public.origenes to kora_cartera_operator;
+grant select(id,decision,external_decision_id,rule_version) on public.nova_authorizations to kora_cartera_operator;
+grant select(obligation_id,amount,status) on public.credit_repayments to kora_cartera_operator;
+grant select(id,obligation_id,operation_id,client_request_id,actor_type,event_type,channel,note,promise_date,promise_amount,created_by,created_at) on public.credit_collection_events to kora_cartera_operator;
+grant select(singleton,nova_enforcement_enabled,nova_enforcement_from) on public.credit_portfolio_settings to kora_cartera_operator;
+grant select on public.creditos_cartera_operaciones to kora_cartera_operator;
+grant select(id,request_id,file_sha256,payload_sha256,cohort_month,cutoff,source_name,observations,link_keys,row_count,received_by,received_at,schema_version) on public.cobra_krediya_cuts to kora_cartera_operator;
+grant select(cut_id,operation_id) on public.cobra_krediya_cut_operations to kora_cartera_operator;
+grant select(id,source_month,generated_cents,prior_used_cents,available_cents) on public.cobra_provision_fundings to kora_cartera_operator;
+grant select(id,event_no,request_id,payload,kind,parent_id,cut_id,operation_id,cohort_month,amount_cents,allocations,purpose,note,evidence,created_by,created_at) on public.cobra_provision_actions to kora_cartera_operator;
+grant insert(operation_id,client_request_id,obligation_id,actor_type,event_type,channel,note,promise_date,promise_amount,created_by) on public.credit_collection_events to kora_cartera_operator;
+grant insert(request_id,payload) on public.cobra_provision_actions to kora_cartera_operator;
+grant usage on sequence public.cobra_provision_actions_event_no_seq to kora_cartera_operator;
+
+-- One allow and one bound for each technical-role relation. Shared PUBLIC
+-- permissive policies cannot enlarge this role's rows. Existing roles unchanged.
+do $policies$
+declare r record;predicate text;
+begin
+ for r in select * from (values
+ ('credit_portfolio_obligations','public.creditos_cartera_puede_leer(origen_codigo)'),
+ ('clientes','exists(select 1 from public.credit_portfolio_obligations o where o.cliente_id=clientes.id)'),
+ ('origenes','exists(select 1 from public.credit_portfolio_obligations o where o.origen_codigo=origenes.codigo)'),
+ ('nova_authorizations','exists(select 1 from public.credit_portfolio_obligations o where o.nova_authorization_id=nova_authorizations.id)'),
+ ('credit_repayments','exists(select 1 from public.credit_portfolio_obligations o where o.id=credit_repayments.obligation_id)'),
+ ('credit_collection_events','exists(select 1 from public.credit_portfolio_obligations o where o.id=credit_collection_events.obligation_id) or (public.cobra_quality_operator() and exists(select 1 from public.cobra_krediya_cut_operations l where l.operation_id=credit_collection_events.operation_id))'),
+ ('credit_portfolio_settings','singleton'),
+ ('cobra_krediya_cuts','public.cobra_quality_operator()'),
+ ('cobra_krediya_cut_operations','public.cobra_quality_operator()'),
+ ('cobra_provision_fundings','public.cobra_quality_operator()'),
+ ('cobra_provision_actions','public.cobra_quality_operator()')
+ ) v(table_name,row_predicate) loop
+  predicate:='(select kora_cartera_policy.cartera_principal_restringido()) and ('||r.row_predicate||')';
+  execute format('create policy cartera_tech_read_allow on public.%I for select to kora_cartera_operator using(%s)',r.table_name,predicate);
+  execute format('create policy cartera_tech_read_bound on public.%I as restrictive for select to kora_cartera_operator using(%s)',r.table_name,predicate);
+ end loop;
+end $policies$;
+create policy cartera_tech_event_insert_allow on public.credit_collection_events for insert to kora_cartera_operator with check(public.cobra_quality_operator() and created_by=(select public.cartera_subject()) and actor_type='humano' and operation_id is not null and client_request_id is not null and exists(select 1 from public.cobra_krediya_cut_operations l where l.operation_id=credit_collection_events.operation_id));
+create policy cartera_tech_event_insert_bound on public.credit_collection_events as restrictive for insert to kora_cartera_operator with check(public.cobra_quality_operator() and created_by=(select public.cartera_subject()) and actor_type='humano' and operation_id is not null and client_request_id is not null and exists(select 1 from public.cobra_krediya_cut_operations l where l.operation_id=credit_collection_events.operation_id));
+create policy cartera_tech_request_allow on public.cobra_provision_actions for insert to kora_cartera_operator with check(public.cobra_quality_operator() and created_by=(select public.cartera_subject()) and kind='request' and parent_id is null and allocations='[]'::jsonb and evidence is null);
+create policy cartera_tech_request_bound on public.cobra_provision_actions as restrictive for insert to kora_cartera_operator with check(public.cobra_quality_operator() and created_by=(select public.cartera_subject()) and kind='request' and parent_id is null and allocations='[]'::jsonb and evidence is null);
+
+create function public.cartera_operador_datos(p_dataset text,p_month date default null,p_id uuid default null,p_after uuid default null,p_limit integer default 100,p_offset integer default 0,p_request uuid default null)
+returns jsonb language plpgsql volatile security definer set search_path='' as $$
+declare actor jsonb;result jsonb;f jsonb;a jsonb;
+begin
+ if not kora_cartera_policy.cartera_principal_restringido() then return kora_private.cartera_error('PT403','cartera_dedicated_actor_required');end if;
+ if not kora_private.cartera_take_budget() then return kora_private.cartera_error('PT429','cartera_request_limit');end if;
+ begin
+  actor:=kora_private.cartera_actor();perform kora_private.cartera_require_contract();
+ if p_limit is null or p_limit not between 1 and 500 or p_offset is null or p_offset not between 0 and 50000 then raise sqlstate 'PT400' using message='cartera_invalid_page';end if;
+ if p_dataset='portfolio' then
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.ally_paid_at desc nulls last,x.id),'[]') into result from(select id,operation_id,credito_id,cliente_id,plataforma,external_credit_id,origen_codigo,tienda,cliente_nombre,cliente_documento,original_amount,outstanding_amount,ally_paid_at,first_due_date,next_due_date,status,pre_nova,nova_status,nova_decision_id,nova_rule_version,validated_repayments,last_collection_at,broken_promises,credit_outcome from public.creditos_cartera_operaciones order by ally_paid_at desc nulls last,id limit p_limit offset p_offset)x;
+ elsif p_dataset='events' then
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.created_at desc,x.id desc),'[]') into result from(select id,obligation_id,operation_id,event_type,channel,note,promise_date,promise_amount,created_at,actor_type from public.credit_collection_events order by created_at desc,id desc limit p_limit offset p_offset)x;
+ elsif p_dataset='settings' then
+  select jsonb_build_object('singleton',s.singleton,'nova_enforcement_enabled',s.nova_enforcement_enabled,'nova_enforcement_from',s.nova_enforcement_from) into result from public.credit_portfolio_settings s where singleton;
+ elsif not coalesce((actor->>'manage')::boolean,false) then raise sqlstate 'PT403' using message='cartera_quality_capability_required';
+ elsif p_dataset='cuts' then
+  if p_month is null or extract(day from p_month)<>1 then raise sqlstate 'PT400' using message='cartera_invalid_month';end if;
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') into result from(select id,request_id,file_sha256,payload_sha256,cohort_month,cutoff,source_name,row_count,received_by,received_at,schema_version from public.cobra_krediya_cuts where cohort_month=p_month and(p_after is null or id>p_after) order by id limit p_limit)x;
+ elsif p_dataset='cut' then
+  if p_id is null then raise sqlstate 'PT400' using message='cartera_cut_required';end if;
+  select jsonb_build_object('id',c.id,'request_id',c.request_id,'file_sha256',c.file_sha256,'payload_sha256',c.payload_sha256,'cohort_month',c.cohort_month,'cutoff',c.cutoff,'source_name',c.source_name,'observations',c.observations,'row_count',c.row_count,'received_by',c.received_by,'received_at',c.received_at,'schema_version',c.schema_version) into result from public.cobra_krediya_cuts c where id=p_id;
+  if result is null then raise sqlstate 'PT404' using message='cartera_cut_not_found';end if;
+ elsif p_dataset in('collection_history','collection_lookup') then
+  if(p_dataset='collection_history' and p_id is null)or(p_dataset='collection_lookup' and p_request is null)then raise sqlstate 'PT400' using message='cartera_reference_required';end if;
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') into result from(select id,client_request_id,operation_id,obligation_id,event_type,channel,note,promise_date,promise_amount,created_by,created_at from public.credit_collection_events where operation_id is not null and case when p_dataset='collection_lookup' then client_request_id=p_request and created_by=(select public.cartera_subject()) else operation_id=p_id and(p_after is null or id>p_after) end order by id limit p_limit)x;
+ elsif p_dataset='fund_book' then
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.source_month,x.id),'[]') into f from(select id,source_month,generated_cents,prior_used_cents,available_cents from public.cobra_provision_fundings order by source_month,id limit 10001)x;
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.event_no),'[]') into a from(select id,event_no,kind,parent_id,cut_id,operation_id,cohort_month,amount_cents,allocations,purpose,note,evidence,created_at from public.cobra_provision_actions order by event_no limit 10001)x;
+  if jsonb_array_length(f)>10000 or jsonb_array_length(a)>10000 then raise sqlstate 'PT400' using message='cartera_fund_book_requires_scope';end if;
+  result:=jsonb_build_object('fundings',f,'actions',a);
+ elsif p_dataset='fund_lookup' then
+  if p_request is null then raise sqlstate 'PT400' using message='cartera_reference_required';end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id',x.id,'request_id',x.request_id,'payload',x.payload,'created_by',x.created_by)),'[]') into result from public.cobra_provision_actions x where request_id=p_request and created_by=(select public.cartera_subject()) and kind='request';
+ elsif p_dataset='customer_history' then
+  if p_id is null then raise sqlstate 'PT400' using message='cartera_reference_required';end if;
+  result:=public.cobra_krediya_history_cuts(p_id);
+ else raise sqlstate 'PT400' using message='cartera_dataset_denied';
+ end if;
+ return result;
+ exception when others then return kora_private.cartera_error(sqlstate,sqlerrm);
+ end;
+end$$;
+revoke all on function public.cartera_operador_datos(text,date,uuid,uuid,integer,integer,uuid) from public,anon,authenticated,service_role;
+grant execute on function public.cartera_operador_datos(text,date,uuid,uuid,integer,integer,uuid) to authenticated;
+alter function public.cartera_operador_datos(text,date,uuid,uuid,integer,integer,uuid) owner to kora_cartera_operator;
+
+create function public.cartera_operador_guardar_gestion(p_request_id uuid,p_operation_id uuid,p_event_type text,p_channel text,p_note text,p_promise_date date default null,p_promise_amount numeric default null)
+returns jsonb language plpgsql volatile security definer set search_path='' as $$
+declare actor jsonb;
+begin
+ if not kora_cartera_policy.cartera_principal_restringido() then return kora_private.cartera_error('PT403','cartera_dedicated_actor_required');end if;
+ if not kora_private.cartera_take_budget() then return kora_private.cartera_error('PT429','cartera_request_limit');end if;
+ begin
+  actor:=kora_private.cartera_actor();perform kora_private.cartera_require_contract();
+ if not coalesce((actor->>'manage')::boolean,false) then raise sqlstate 'PT403' using message='cartera_manage_required';end if;
+ return public.cobra_krediya_save_collection(p_request_id,p_operation_id,p_event_type,p_channel,p_note,p_promise_date,p_promise_amount);
+ exception when others then return kora_private.cartera_error(sqlstate,sqlerrm);
+ end;
+end$$;
+revoke all on function public.cartera_operador_guardar_gestion(uuid,uuid,text,text,text,date,numeric) from public,anon,authenticated,service_role;
+grant execute on function public.cartera_operador_guardar_gestion(uuid,uuid,text,text,text,date,numeric) to authenticated;
+alter function public.cartera_operador_guardar_gestion(uuid,uuid,text,text,text,date,numeric) owner to kora_cartera_operator;
+
+create function public.cartera_operador_solicitar_provision(p_request_id uuid,p_payload jsonb)
+returns jsonb language plpgsql volatile security definer set search_path='' as $$
+declare actor jsonb;r record;
+begin
+ if not kora_cartera_policy.cartera_principal_restringido() then return kora_private.cartera_error('PT403','cartera_dedicated_actor_required');end if;
+ if not kora_private.cartera_take_budget() then return kora_private.cartera_error('PT429','cartera_request_limit');end if;
+ begin
+  actor:=kora_private.cartera_actor();perform kora_private.cartera_require_contract();
+ if not coalesce((actor->>'manage')::boolean,false) then raise sqlstate 'PT403' using message='cartera_manage_required';end if;
+ if p_request_id is null or jsonb_typeof(p_payload) is distinct from 'object' or p_payload->>'kind' is distinct from 'request' then raise sqlstate 'PT400' using message='cartera_request_only';end if;
+ perform pg_advisory_xact_lock(726026,22);
+ select id,request_id,payload,created_by into r from public.cobra_provision_actions where request_id=p_request_id;
+ if not found then insert into public.cobra_provision_actions(request_id,payload) values(p_request_id,p_payload) returning id,request_id,payload,created_by into r;end if;
+ if r.payload is distinct from p_payload or r.created_by is distinct from public.cartera_subject() then raise exception 'cobra_fund_idempotency_conflict';end if;
+ return jsonb_build_object('id',r.id,'request_id',r.request_id,'payload',r.payload,'saved',true,'payment_executed',false);
+ exception when others then return kora_private.cartera_error(sqlstate,sqlerrm);
+ end;
+end$$;
+revoke all on function public.cartera_operador_solicitar_provision(uuid,jsonb) from public,anon,authenticated,service_role;
+grant execute on function public.cartera_operador_solicitar_provision(uuid,jsonb) to authenticated;
+alter function public.cartera_operador_solicitar_provision(uuid,jsonb) owner to kora_cartera_operator;

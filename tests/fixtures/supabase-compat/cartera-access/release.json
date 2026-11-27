@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Additive exact restrictive authenticated overlay plus dedicated session RPCs and provision review. Official PostgreSQL 17.6/Auth/PostgREST 14.5, fictional reduced 197-table dependencies; not a production clone. Earlier independent Cobra proof retained and superseded by the combined contract.",
+  "migration_sha256": {
+    "supabase/migrations/20261126012515_cobra_krediya_cut_history.sql": "33e8674a20415126c38431937b31317ad0b2a73c58449b1dc20419e53f5d813b",
+    "supabase/migrations/20261126013403_cobra_krediya_collection_operation_link.sql": "6f69b6a7f5e7f1026230267c7093563e79c3df259b39576d53e487932fc6d021",
+    "supabase/migrations/20261126154810_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+    "supabase/migrations/20261127011623_cartera_dedicated_session_access.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-cartera-access.test.mjs",
+      "sha256": "0b9b5f2e1149c6c07b0fa52d8980deedacb816939e4d14e34d137fb2b35eae8c"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "supersedes": [
+    {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/release.json",
+      "sha256": "34d4dffa894d68abbb09f8f6e39e366195e223b70055128ade2bfb7cd94771ab"
+    }
+  ],
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/upgrade-before.json",
+      "sha256": "eb996ca1ca245c2ee12540030f6dabb799a9910a0ed1fdd4e8e773ea0ca37719"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/upgrade-after.json",
+      "sha256": "be4968350241f9963f6116804217914e62f6c9a3620403066e03247a2df0346d"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/upgrade-contract.json",
+      "sha256": "2ab42f60a536b654c415f696b9ba31a8cfa362856f1f5d387cd4428af5254462"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/upgrade-created.json",
+      "sha256": "4e4b1a47605457751c71c64867fd709616ae18eaab2f31482620afb22dc70eec"
+    }
+  },
+  "native_receipts": {
+    "upgrade": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/upgrade-native-result.json",
+      "sha256": "d22b18d157e77e249ae1cf1ad248f780a9d20833d6ff5e7c734f0f3c5fa0513b"
+    },
+    "rebuild": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/rebuild-native-result.json",
+      "sha256": "5c1f7cdeaadb1605b3f72e56281e5b09a6004fb585f0286afc7809a8984d4969"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/rebuild-before.json",
+      "sha256": "15e179f918cbac1a01e55766a9f99fe8692c0f0555d9fb2093d82f4dac26be3d"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/rebuild-after.json",
+      "sha256": "c46f803db399f7fff5bff2f8d3130d84f393763dfc684d5f139acb437c8e2a4c"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/rebuild-contract.json",
+      "sha256": "2ab42f60a536b654c415f696b9ba31a8cfa362856f1f5d387cd4428af5254462"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/cartera-access/rebuild-created.json",
+      "sha256": "4e4b1a47605457751c71c64867fd709616ae18eaab2f31482620afb22dc70eec"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "input_sha256": "6bcc88e779752177555de4de5956fce240535ee67148060840c3d1cf64d55aaa",
+  "files": {
+    "PLAN.md": "b1cddf32eded2713cf8d289a9fd06445985c022023992d1c46c547c734118f4f",
+    "auth-role-proof.py": "0e8a2ba676c76bdc5bc425b4786307c274971a5f957cbab4bb34d50801a4fb93",
+    "auth-role-proof-result.json": "a4291d8ab088b8885e6950cb9dfb93a4197892280cfd1114263de71e28f4fa1f"
+  },
+  "scope": "Design/source and fictional tests only; no production accounts, records, credentials or backend sources"
+}

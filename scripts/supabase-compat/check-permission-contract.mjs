@@ -1,3 +1,4 @@
+import {checkCarteraCoverage,carteraOverlayKeys} from './cartera-coverage-gate.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -5,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 // Offline semantic release gate. Inputs must be snapshots taken from a
 // disposable reconstruction/update, never a claim inferred from RLS alone.
 // It neither connects to production nor emits/applies GRANT statements.
-const apiRoles = new Set(['PUBLIC', 'anon', 'authenticated', 'service_role']);
+const apiRoles = new Set(['PUBLIC', 'anon', 'authenticated', 'service_role','kora_cartera_session','kora_cartera_operator']);
 const objectKey = object => `${object.schema}.${object.name}${object.identity === undefined ? '' : `(${object.identity})`}`;
 const objects = snapshot => [...snapshot.relations, ...snapshot.functions.map(fn => ({ ...fn, kind: 'function' }))];
 const sort = values => [...values].sort();
@@ -25,6 +26,8 @@ export function checkPermissionContract({ before, after, contract, created }) {
   if (requiredCatalogs.some(key => !Array.isArray(before?.[key]) || !Array.isArray(after?.[key]))) {
     return { ok: false, errors: ['Both snapshots must include relations, functions, defaults, policies, role_config, schema_grants and triggers arrays'], scope: 'isolated-catalog-contract-only' };
   }
+  errors.push(...checkCarteraCoverage(after));
+  const overlay=carteraOverlayKeys(before,after,contract);errors.push(...overlay.errors);
   const previous = new Map(objects(before).map(o => [objectKey(o), o]));
   const next = new Map(objects(after).map(o => [objectKey(o), o]));
   for (const [label, catalog] of [['before', previous], ['after', next]]) {
@@ -76,7 +79,7 @@ export function checkPermissionContract({ before, after, contract, created }) {
     if (!current) { errors.push(`${key}: unexpected object removal`); continue; }
     if (contracts.has(key)) continue;
     const access = object => ({ owner: object.owner, kind: object.kind, rls: object.rls, force_rls: object.force_rls,
-      policy_count: object.policy_count, options: sort(object.options || []), security_definer: object.security_definer,
+      policy_count: overlay.keys.has(key)?undefined:object.policy_count, options: sort(object.options || []), security_definer: object.security_definer,
       definition_md5: object.definition_md5, config: sort(object.config || []), grants: grants(object), columns: columns(object), column_shape: columnShape(object) });
     if (stable(access(old)) !== stable(access(current))) errors.push(`${key}: access changed outside the contract`);
   }

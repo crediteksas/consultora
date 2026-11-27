@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "checks": [
+    "fictional Auth user created 0",
+    "fictional Auth user created 1",
+    "dedicated Auth role assigned before first login",
+    "before phase has exact 197 public table names",
+    "R6 installed without enabling its contract",
+    "native non-superuser installation/activation passed",
+    "real signed dedicated JWT opens only its own Cartera profile",
+    "ordinary signed user bootstrap remains unrestricted",
+    "classic portfolio shows only assigned origin and validated repayment",
+    "dedicated prohibited HTTP route GET /clientes {}",
+    "dedicated prohibited HTTP route POST /rpc/rol_actual {}",
+    "dedicated prohibited HTTP route GET /rpc/cartera_operador_inicio {}",
+    "dedicated prohibited HTTP route HEAD /rpc/cartera_operador_inicio {}",
+    "dedicated prohibited HTTP route POST /rpc/cartera_operador_inicio {'accept': 'application/vnd.pgrst.plan+json'}",
+    "dedicated prohibited HTTP route POST /rpc/cartera_operador_inicio {'content-profile': 'storage'}",
+    "dedicated prohibited HTTP route GET / {}",
+    "cut history read is complete without raw rows",
+    "follow-up saves once and creates no payment",
+    "provision request saves once and does not execute payment",
+    "operator cannot funding",
+    "operator cannot authorize",
+    "operator cannot execute",
+    "operator cannot release",
+    "operator cannot reject",
+    "native source balance and payment history preserved"
+  ],
+  "production_operations": 0,
+  "external_sends": 0,
+  "fixture_scope": "197 named public tables with fictional reduced dependencies and 13 managed relation models; NOT a production clone or hosted gateway test",
+  "runtime": "official PostgreSQL/Auth/PostgREST on an internal network, no host ports",
+  "source_sha256": {
+    "native-r6-proof.py": "50b7025c0303c57fddaed5b0cb313c7c60a2181f2687bba3dffbda400b89a92c",
+    "cartera-r6-native-fixture.sql": "a5a7979c163718c9f0d0bcd01936318ffc708afded2fd60b541c3504a6dd0ca2",
+    "20261126154810_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+    "scope-full.sql": "fd315eb258788719d02bf1f24930f501bba946d73217a32dd8c5ec6ffabbeebf",
+    "local-test-runtime.py": "6f596dadf40c5b5657eb45cc86bc9b2c669675707749bf9a6c867d129c6a9d14"
+  },
+  "images": {
+    "db": "[\"public.ecr.aws/supabase/postgres@sha256:ba10e934f0a59990379f78ab9ed93926f1c291dd61a12fe4026f4202f1b89770\"]",
+    "auth": "[\"supabase/gotrue@sha256:ba8c0c82c574756c835c696df2a2c698020cc408a42034013d3712e34de7964d\"]",
+    "rest": "[\"postgrest/postgrest@sha256:1347d7552b88f17832912c06afbf7c43209af6eeeb60834b04aae12c9bd9d5cc\"]"
+  }
+}

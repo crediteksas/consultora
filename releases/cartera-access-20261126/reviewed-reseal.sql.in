@@ -1,0 +1,18 @@
+-- NON-EXECUTABLE TEMPLATE. Create a versioned migration with the CLI only
+-- after independent catalog review and upgrade/rebuild proofs. Placeholders
+-- must come from that reviewed evidence, never a live self-accepting subquery.
+begin;
+-- Include the reviewed DDL / updated assert_ready and inventory definitions here.
+do $reviewed_reseal$
+declare old_seal text:='__APPROVED_OLD_SEAL__';new_seal text:='__APPROVED_NEW_SEAL__';was_enabled boolean;
+begin
+ if old_seal !~ '^[a-f0-9]{64}$' or new_seal !~ '^[a-f0-9]{64}$' or old_seal=new_seal then raise exception 'cartera_reseal_review_missing';end if;
+ select enabled into strict was_enabled from kora_private.cartera_contract where singleton and fingerprint=old_seal for update;
+ perform kora_private.cartera_assert_ready();
+ if kora_private.cartera_catalog_fingerprint() is distinct from new_seal then raise exception 'cartera_reseal_catalog_changed';end if;
+ -- The reviewed migration's exact SQL and hashes serve as immutable release
+ -- evidence. Keep existing per-account restrictions; no permissions widened.
+ update kora_private.cartera_contract set fingerprint=new_seal,enabled=was_enabled where singleton and fingerprint=old_seal;
+ if not found then raise exception 'cartera_reseal_stale';end if;
+end$reviewed_reseal$;
+commit;

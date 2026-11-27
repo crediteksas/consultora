@@ -1,0 +1,12 @@
+{
+  "files": {
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-proof.mjs": "7f024313692cfb31a2b4bee867cfc4abd0d4c62152ef46d2b4817f5ab6b5b843",
+    "releases/cartera-access-20261126/compatibility-session-role/activation-template.sql.in": "60623d0513af2a0060caaefe0115012d9790659f12da4e78c132097bdd85b834",
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/kora-access-control.js": "b17453a84f1addb712b94369e312acd0516af8a291dcad0b3113541b2828b213",
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/catalog-query.sql": "a6d8ccc7c03ad60026f4d95bec148eaa9ac6b2fbc1c69eab1c4b2c349e47648d",
+    "tests/security/navigation-shell.test.mjs": "7834f95d79d5df0bb25f4822e671344e9fab5875aae2d2d61396070f0ac23ee4",
+    "tests/security/supabase-compatibility-source-batch.test.mjs": "47a710137dec5280c787880f4ab4cf871ccf8893fcd41a3f97c66b9673c64e1b",
+    "tests/security/supabase-compatibility-cobra-krediya.test.mjs": "027832b880a0acf905b7ac39d5f0e35f554ead43508dfda07a2a62fc87b23eac"
+  },
+  "input_sha256": "3faabc04da519c73e3752fe8ef439f8e8d5760b818fe8abdcd84728694f82f6f"
+}

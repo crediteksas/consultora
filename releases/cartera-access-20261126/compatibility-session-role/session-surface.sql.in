@@ -1,0 +1,31 @@
+-- R6 candidate: fixed privilege checks. Never installs or assigns an Auth user.
+create function kora_private.cartera_assert_session_surface() returns void language plpgsql security definer set search_path='' as $$
+declare s record;rpc_shape record;expected text[];actual text[];
+begin
+ if current_setting('server_version_num')::integer<160000 then raise exception 'cartera_unsupported_server';end if;
+ if not exists(select 1 from pg_roles where rolname='kora_cartera_session' and not(rolcanlogin or rolinherit or rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)) then raise exception 'cartera_session_role_attributes';end if;
+ if exists(select 1 from pg_roles r where r.rolname<>'kora_cartera_session' and (pg_has_role('kora_cartera_session',r.oid,'MEMBER') or pg_has_role('kora_cartera_session',r.oid,'USAGE') or pg_has_role('kora_cartera_session',r.oid,'SET'))) then raise exception 'cartera_session_forward_membership';end if;
+ -- Exact count is asserted separately; avoid accepting an extra trusted member.
+ if (select count(*) from pg_auth_members where roleid='kora_cartera_session'::regrole)<>2 or exists(select 1 from pg_auth_members where roleid='kora_cartera_session'::regrole and not((member='postgres'::regrole and grantor=10 and admin_option and not inherit_option and not set_option) or(member='authenticator'::regrole and grantor='postgres'::regrole and not admin_option and not inherit_option and set_option))) then raise exception 'cartera_session_reverse_membership';end if;
+ if not exists(select 1 from pg_db_role_setting where setrole='kora_cartera_session'::regrole and setdatabase=0 and setconfig=array['statement_timeout=8s','lock_timeout=2s']) then raise exception 'cartera_session_timeout_settings';end if;
+ if exists(select 1 from pg_namespace where nspname in('auth','kora_private','kora_cartera_policy','storage','realtime') and (has_schema_privilege('kora_cartera_session',oid,'USAGE') or has_schema_privilege('kora_cartera_session',oid,'CREATE'))) then raise exception 'cartera_session_private_schema_grant';end if;
+ if has_schema_privilege('kora_cartera_session','public','CREATE') then raise exception 'cartera_session_public_create';end if;
+ if exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname not in('pg_catalog','information_schema') and n.nspname !~ '^pg_(toast|temp)' and (n.nspname in('public','auth','kora_private','kora_cartera_policy','storage','realtime') or not exists(select 1 from pg_depend xd where xd.classid='pg_class'::regclass and xd.objid=c.oid and xd.refclassid='pg_extension'::regclass and xd.deptype='e')) and ((c.relkind in('r','p','v','m','f') and (has_table_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') or has_any_column_privilege('kora_cartera_session',c.oid,'SELECT,INSERT,UPDATE,REFERENCES'))) or(c.relkind='S' and has_sequence_privilege('kora_cartera_session',c.oid,'USAGE,SELECT,UPDATE')) or c.relowner='kora_cartera_session'::regrole)) then raise exception 'cartera_session_data_grant';end if;
+ -- Tier H is public. Actual provider/API exposure is independently verified.
+ if exists(select 1 from pg_proc fn_meta join pg_namespace n on n.oid=fn_meta.pronamespace where n.nspname='public' and fn_meta.prorettype not in('trigger'::regtype,'event_trigger'::regtype,'internal'::regtype) and has_function_privilege('kora_cartera_session',fn_meta.oid,'EXECUTE') and fn_meta.proname not in('cartera_operador_inicio','cartera_operador_datos','cartera_operador_guardar_gestion','cartera_operador_solicitar_provision','kora_confirmacion_deuda_pre_request') and (fn_meta.prosecdef or (case when fn_meta.prokind in('f','p') then pg_get_functiondef(fn_meta.oid) else '' end) ~* '(dblink|http_|net\.|pg_notify|lo_import|lo_export|pg_read_file|pg_write_file)')) then raise exception 'cartera_session_unsafe_http_function';end if;
+ for s in select * from(values
+ ('cartera_operador_inicio','public.cartera_operador_inicio()','authenticated'),
+ ('cartera_operador_datos','public.cartera_operador_datos(text,date,uuid,uuid,integer,integer,uuid)',null),
+ ('cartera_operador_guardar_gestion','public.cartera_operador_guardar_gestion(uuid,uuid,text,text,text,date,numeric)',null),
+ ('cartera_operador_solicitar_provision','public.cartera_operador_solicitar_provision(uuid,jsonb)',null)) q(name,signature,ordinary) loop
+  select pr.* into rpc_shape from pg_proc pr where pr.oid=to_regprocedure(s.signature);
+  if not found or rpc_shape.proretset or rpc_shape.prorettype<>'jsonb'::regtype or rpc_shape.proowner<>'kora_cartera_operator'::regrole or not rpc_shape.prosecdef or rpc_shape.proconfig is distinct from array['search_path=""'] then raise exception 'cartera_session_rpc_shape';end if;
+  if(select count(*) from pg_proc pr join pg_namespace ns on ns.oid=pr.pronamespace where ns.nspname='public' and pr.proname=s.name)<>1 then raise exception 'cartera_session_rpc_overload';end if;
+  expected:=array['kora_cartera_operator:EXECUTE:false:kora_cartera_operator','kora_cartera_session:EXECUTE:false:kora_cartera_operator'];
+  if s.ordinary is not null then expected:=array_append(expected,'authenticated:EXECUTE:false:kora_cartera_operator');end if;
+  select array_agg(x order by x) into expected from unnest(expected) x;
+  select array_agg(pg_get_userbyid(a.grantee)||':'||a.privilege_type||':'||a.is_grantable::text||':'||pg_get_userbyid(a.grantor) order by pg_get_userbyid(a.grantee)||':'||a.privilege_type||':'||a.is_grantable::text||':'||pg_get_userbyid(a.grantor)) into actual from aclexplode(coalesce(rpc_shape.proacl,acldefault('f',rpc_shape.proowner))) a;
+  if actual is distinct from expected then raise exception 'cartera_session_rpc_acl';end if;
+ end loop;
+end$$;
+revoke all on function kora_private.cartera_assert_session_surface() from public,anon,authenticated,service_role,kora_cartera_operator,kora_cartera_session;

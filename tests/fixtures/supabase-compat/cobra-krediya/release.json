@@ -9,7 +9,7 @@
   "isolation_tests": [
     {
       "path": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
-      "sha256": "53638242afbc6e51b1395d344ad05ee40d920e023a2a80b5dc5804c937cd78e9"
+      "sha256": "027832b880a0acf905b7ac39d5f0e35f554ead43508dfda07a2a62fc87b23eac"
     }
   ],
   "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
@@ -52,5 +52,13 @@
   "native_receipt": {
     "path": "tests/fixtures/supabase-compat/cobra-krediya/native-receipt.json",
     "sha256": "77db84f2b1d71b1bcaa434725ecda26d2b0e5d40425364c47b97e2d80b58c827"
+  },
+  "historical_release": {
+    "path": "releases/cartera-access-20261126/compatibility-session-role/prior-cobra-release.json",
+    "sha256": "b0b768e62bcb143f5f2d66648cb2d934bb4ad8984e9a69dfb956bb971f2c6234"
+  },
+  "historical_isolation_source": {
+    "path": "releases/cartera-access-20261126/compatibility-session-role/prior-cobra-isolation-test.mjs",
+    "sha256": "53638242afbc6e51b1395d344ad05ee40d920e023a2a80b5dc5804c937cd78e9"
   }
 }

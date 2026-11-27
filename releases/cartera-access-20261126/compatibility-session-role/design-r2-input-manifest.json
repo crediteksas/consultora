@@ -1,0 +1,8 @@
+{
+  "input_sha256": "e66c30860f2e9942a1f8930987f98d06fc44c198e03337676f6b9a9fd5f58e90",
+  "files": {
+    "PLAN.md": "40cceb9ca5e26ed550ecaee6dd2a94e9d4254a52a94138d696ade404fd56c1a7",
+    "auth-role-proof.py": "700a14a08c0ea7159a72bd883107ae36ea77d9bdccfc968d608c5d7ae8c3e5fc"
+  },
+  "scope": "Source/design and fictional test code only; no private provider data, credentials or logs"
+}

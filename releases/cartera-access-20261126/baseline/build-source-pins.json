@@ -1,0 +1,11 @@
+{
+  "public-relations.json": "97a19362a38af0ab071226be45c16b1e4e25d31e1a82c646a802874113d33666",
+  "old-api-guard.sql": "e05776964a9caf0d5991bc71cd90e9569f9dd3c0dbf4698931a52cc708c66a6b",
+  "old-debt-guard.sql": "3ff0744f0c9f2e8ec9e31ab01405f699b2eecf4026eda8a1a630d3a0aae3e647",
+  "old-role-check.json": "0734daaa12cf89a49847546942e657c21ac9d3e90a71cb5be9aacebb469cccd2",
+  "collection-callgraph.json": "a61bdf553a42eb1edae715c51cf4b77281305056f2c848a80156b66834365aa4",
+  "provision-identity-before.json": "59b30d2a768de59e2ddf5b6dcfe12b666d80534d2ab6a758466fda554d41f9dd",
+  "trust-dependencies.json": "9b96967916ed64ea4e99e1ee8521c5387ecabb7cace5876268c38a31918d1b18",
+  "draft-trust-dependencies.json": "f6c36932537266cc7c9516b50972134e634bcb2f9ea9c0a7da27f530da77e71a",
+  "managed-relations.json": "66faf587e27d24cb889f96a1922a670a2a79a3cf352d1fbe48f8b9226cd41d36"
+}

@@ -1,0 +1,132 @@
+# Verdict: CHANGES REQUIRED
+
+This is a preparation review only. It does not certify activation or deployment. The known installation blocker stays fail-closed. Independently of that blocker, the candidate has the following code-level defects.
+
+---
+
+## Blocking issues
+
+### 1. The SQL assumes PostgreSQL 16+ but never checks the server version
+- `grant kora_cartera_operator to postgres with inherit false` requires PG16 syntax.
+- The fingerprint reads `pg_auth_members.inherit_option` and `set_option`, which exist only on PG16+.
+- On PG15, the script fails during install. If the grant line were edited out, the fingerprint would fail at runtime.
+- **Fix:** add `if current_setting('server_version_num')::int < 160000 then raise exception 'cartera_unsupported_server'` to the preflight.
+
+### 2. `perfiles_rol_check` is dropped and recreated without a precondition
+- If the production constraint currently allows more roles, the hard-coded list silently removes them or fails on existing rows.
+- **Fix:** add to the preflight an exact `pg_get_constraintdef` equality check on the current definition. Alternatively, build the new list from the verified old one.
+
+### 3. `grant usage on schema kora_private to authenticated` widens access
+- Functions get `EXECUTE` to PUBLIC by default. Any `kora_private` function that relied on schema USAGE denial becomes nameable by `authenticated` from any SQL context.
+- The preflight does not inventory `kora_private` function ACLs.
+- **Fix:** move `cartera_principal_restringido()` into a dedicated schema, for example `kora_cartera_policy`, that contains only that function. Grant USAGE on that schema only. Do not grant `kora_private` to `authenticated`.
+
+### 4. `cartera_record_profile` is a BEFORE trigger
+- BEFORE triggers fire alphabetically. A later-named BEFORE trigger on `perfiles` could set `rol='operador_cartera'` after this trigger has already inspected `NEW`, so the principal would never be recorded.
+- **Fix:** make it `AFTER INSERT OR UPDATE OR DELETE ... FOR EACH ROW`, which sees the final row.
+- **Also needed:** principals are sticky, and no reviewed removal procedure exists. A mistaken assignment permanently restricts a staff account, so write and review that procedure before activation.
+
+### 5. The rate limit does not count failed calls, and the fingerprint runs before the budget
+Every restricted call runs in this order: `cartera_actor()` → `cartera_require_contract()` → `cartera_take_budget()`.
+- `cartera_require_contract()` computes the full catalog fingerprint: every public function definition, view definition and policy.
+- Any error raised after the budget step rolls back the increment. Your test "rate cap is transactional" asserts exactly this. Examples:
+  - `cartera_invalid_page`
+  - `cartera_dataset_denied`
+  - `cartera_quality_capability_required`
+  - an idempotency conflict
+- The result: an operator can issue unlimited failing calls, each paying the fingerprint cost, without ever consuming budget.
+
+**Fix:**
+- Take the budget first, before the contract check, with a cheap check.
+- Make argument and dataset denials return a committed JSON error, for example `{error:'cartera_dataset_denied'}`, instead of `raise`. Alternatively, record denials in a path that commits.
+- Consider caching the fingerprint per transaction, not per session.
+- Treat this as a drift/abuse item, not a privilege hole.
+
+### 6. The fingerprint misses role memberships that could widen access
+- `members` only covers memberships of `kora_cartera_operator`. A drift such as `grant service_role to authenticated`, or a change to `authenticator` or `anon`, would go undetected.
+- **Fix:** also include `pg_auth_members` rows where `roleid` or `member` is `anon`, `authenticated`, `authenticator` or `service_role`.
+- Also consider adding `pg_event_trigger` and `pg_default_acl` for `public` and `kora_private`.
+
+### 7. The client wraps the page client too late, and only on one route
+- `window.creditekSidebar = { ..., sb: pageClient, ... }` is assigned with the **raw** client before `pageClient = KoraPortfolioClient.create(...)`. Page code that reads `window.creditekSidebar.sb` gets the unrestricted client. The server still fails closed, but the integration is wrong and the page breaks.
+- Wrapping only happens when `authorization.route === 'creditos-cartera.html'`. Any other route in `CREDIT_PORTFOLIO_ROUTES`, and any `PUBLIC_ROUTES` page, keeps the raw client.
+- **Fix:**
+  - Wrap whenever `experience === 'portfolio'`, regardless of route.
+  - Throw if `KoraPortfolioClient` is missing.
+  - Assign `window.creditekSidebar.sb` only after wrapping.
+  - Add a shell test asserting that `window.creditekSidebar.sb !== rawClient` for the portfolio experience.
+
+### 8. The HTML pulls the separately gated proposal into this candidate
+`creditos-cartera.html` adds:
+- `cobra-evolution.css`
+- `cobra-evolution-domain.js`
+- `cobra-evolution-ui.js`
+- `cartera-presentacion.css`
+- `cartera-presentacion.js`
+- `#evolution-root`
+
+This contradicts the stated scope that the visual/fund proposal remains unintegrated. **Fix:** remove these includes from this candidate. Otherwise, the review would have to cover those files too.
+
+### 9. The core tests run a different SQL file than the one reviewed
+- `core-fixture.mjs` installs `candidate/scope-core.sql`. That covers the inventory and installer preflight tests, the debt-guard tests and the rate-limit tests.
+- Only `full-fixture` runs `scope-full.sql`.
+- **Fix:** run the negative preflight and pre-request tests against `scope-full.sql`. Alternatively, add a test asserting that the preflight and pre-request sections of both files are byte-identical.
+- Also, the debt-guard test re-executes `baseline/old-debt-guard.sql`. Assert afterwards that `public.kora_confirmacion_deuda_pre_request()` still has the candidate's md5. Without that assertion, the file could overwrite the wrapper and you would be testing the old one.
+
+### 10. Every user's boot now depends on the new RPC, with no deploy-order guard
+- The shell calls `sb.rpc('cartera_operador_inicio')` for every user before reading the profile, and any error throws.
+- That fail-closed behavior is correct. But if `sidebar.js` ships before the SQL is installed, all users are locked out.
+- **Fix:** add an explicit deploy-order precondition, SQL first, to the release checklist.
+- **Optional:** add a test asserting that the `resolveBootstrap` code duplicated in `sidebar.js` is byte-equal to the copy in `cartera-operador-client.js`.
+
+---
+
+## Reviewed areas with no blocking defect
+
+**Debt-guard wrapper**
+- The exemption applies only to `POST` with an exact path match, in both slash forms.
+- An ordinary profile gets only `{restricted:false}`, and that path does not run the budget or fingerprint.
+- Every other route runs `exigir_confirmacion_deuda_api()` first and propagates its errors. A restricted principal on the exempt path still gets header and route validation.
+- The md5 preconditions on the old wrapper and guard are correct, and `CREATE OR REPLACE` keeps the existing owner and ACL.
+
+**Technical role**
+- Permissive and restrictive policies come in pairs, so shared PUBLIC permissive policies cannot widen it.
+- It has column-level grants only.
+- Policy `with check` is evaluated after BEFORE triggers, so the request-only bounds on `cobra_provision_actions` hold even though the grant covers only `(request_id,payload)`.
+
+**Data RPCs**
+- Every non-read dataset requires `manage`.
+- `fund_lookup` and `collection_lookup` are pinned to `created_by = auth.uid()`.
+- Provision idempotency checks both payload and creator.
+
+---
+
+## Non-blocking issues
+
+- **View ownership:** `creditos_cartera_operaciones`, if it is not `security_invoker`, reads its base tables with owner rights. Origin scope then rests entirely on its internal `creditos_cartera_puede_leer` filter. Either assert `security_invoker=true` in the reloptions in the preflight, or document the dependency. The fingerprint covers drift, not the original design.
+- **Provision existence oracle:** the idempotency lookup reveals whether another user's `request_id` exists, through the conflict error. Low risk.
+- **Advisory lock:** confirm that `(726026,22)` is the same key the existing `cobra_provision_save` uses. Otherwise, rely on a unique constraint on `request_id`.
+- **Client errors:** builder methods `throw` synchronously instead of returning `{error}`. `maybeSingle()` on the `cut` dataset gets PT404, not `data:null`. Both fail closed but can break page flow.
+- **UI label:** the HTML offers channel `platform`, but `channelLabels` lacks it, so it shows "Canal por verificar". Meanwhile `sms` is labelled but not offered.
+- **Unconfirmed capability flag:** `es_operador_cartera` is used in navigation filters, but the diff never shows where it is set. Confirm that it is assigned from `portfolioBoot.read`.
+- **Extra gate:** add Edge Functions and service-role endpoints that trust the user JWT to the preactivation gates. They bypass both the RLS overlay and the pre-request guard.
+- **Missing tests:**
+  - read-only operator calling `guardar_gestion` and `solicitar_provision`
+  - the rate-limit gap for failing calls
+  - a constraint-precondition mismatch
+  - trigger ordering
+  - a valid route with a GET method for the data RPCs
+
+---
+
+## Source-level alternative for the identity path (needs separate review; not approved here)
+
+The goal is to remove the need for `USAGE` on `auth` and the grant option.
+
+- **Mirror the claim source.** Create `kora_cartera_identity.uid()` as a `LANGUAGE sql STABLE SECURITY INVOKER` function with `set search_path=''`. It reads the same claim source as the provider's `auth.uid()`:
+  - `request.jwt.claim.sub`, falling back to `request.jwt.claims->>'sub'`
+  - additionally require `request.jwt.claims->>'role' = 'authenticated'`
+- **Grant narrowly.** The schema and function are owned by the installer. Grant USAGE and EXECUTE only to `kora_cartera_operator`. This is an invoker function, so it elevates nothing.
+- **Replace every caller.** Use it in place of `auth.uid()` in all technical-role functions and policies.
+- **Detect divergence.** In the preflight, assert the md5 of `pg_get_functiondef('auth.uid()')` against the reviewed definition. Because the fingerprint already includes `auth.uid()`, any provider change to it disables the contract.
+- **Remaining risk:** this trusts the same per-request GUCs that PostgREST sets. That trust model is equivalent to `auth.uid()`, but you still need provider confirmation that those GUCs cannot be set by clients on every managed surface.

@@ -1,0 +1,401 @@
+[
+  {
+    "schema": "kora_private",
+    "name": "cartera_contract",
+    "kind": "r"
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_principals",
+    "kind": "r"
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_rpc_budget",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "clientes",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_cut_operations",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_cuts",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_actions",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_actions_event_no_seq",
+    "kind": "S"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_authority",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_funding_operations",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_funding_sources",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_fundings",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "credit_collection_events",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "credit_portfolio_obligations",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "credit_portfolio_operators",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "credit_portfolio_settings",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "credit_repayments",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "creditos_cartera_operaciones",
+    "kind": "v"
+  },
+  {
+    "schema": "public",
+    "name": "nova_authorizations",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "origenes",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "perfiles",
+    "kind": "r"
+  },
+  {
+    "schema": "kora_cartera_policy",
+    "name": "cartera_principal_restringido",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_activate",
+    "kind": "function",
+    "identity": "p_reviewed_fingerprint text"
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_actor",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_api_pre_request",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_assert_coverage",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_assert_dependencies",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_assert_managed",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_assert_ready",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_assert_session_surface",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_catalog_fingerprint",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_error",
+    "kind": "function",
+    "identity": "p_code text, p_message text"
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_record_profile",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_require_contract",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_safe_message_partition",
+    "kind": "function",
+    "identity": "p_rel oid"
+  },
+  {
+    "schema": "kora_private",
+    "name": "cartera_take_budget",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cartera_operador_datos",
+    "kind": "function",
+    "identity": "p_dataset text, p_month date, p_id uuid, p_after uuid, p_limit integer, p_offset integer, p_request uuid"
+  },
+  {
+    "schema": "public",
+    "name": "cartera_operador_guardar_gestion",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_operation_id uuid, p_event_type text, p_channel text, p_note text, p_promise_date date, p_promise_amount numeric"
+  },
+  {
+    "schema": "public",
+    "name": "cartera_operador_inicio",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cartera_operador_solicitar_provision",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_payload jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "cartera_subject",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_guard_event_history",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_history_cuts",
+    "kind": "function",
+    "identity": "p_operation_id uuid"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_immutable",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_link_cut",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_payload_digest",
+    "kind": "function",
+    "identity": "p_rows jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_prepare_cut",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_save_collection",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_operation_id uuid, p_event_type text, p_channel text, p_note text, p_promise_date date, p_promise_amount numeric"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_save_cut",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_file_sha256 text, p_cohort_month date, p_cutoff date, p_source_name text, p_rows jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_validate_event",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_authorizer",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_balances",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_book",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_immutable",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_link_funding",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_prepare_action",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_prepare_funding",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_save",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_kind text, p_payload jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_source",
+    "kind": "function",
+    "identity": "p_month date"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_source_guard",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_provision_source_rows",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_document",
+    "kind": "function",
+    "identity": "p_value text"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_fold",
+    "kind": "function",
+    "identity": "p_value text"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_importer",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_operator",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "creditos_cartera_puede_leer",
+    "kind": "function",
+    "identity": "p_origen_codigo text"
+  },
+  {
+    "schema": "public",
+    "name": "kora_confirmacion_deuda_pre_request",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "rol_actual",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "tiene_capacidad_aliados",
+    "kind": "function",
+    "identity": "p_capacidad text"
+  },
+  {
+    "schema": "public",
+    "name": "tiene_capacidad_cartera",
+    "kind": "function",
+    "identity": "p_capacidad text"
+  }
+]

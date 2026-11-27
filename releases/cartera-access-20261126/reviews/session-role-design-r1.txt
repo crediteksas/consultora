@@ -1,0 +1,123 @@
+# Review: dedicated Cartera session role (R5 correction)
+
+## Verdict: **CHANGES REQUIRED**
+
+The direction is sound. Moving registered Cartera identities off `authenticated` onto a dedicated, privilege-empty role removes the R5 blocker without touching provider RLS. The design as written, however, has specification gaps. Some could let the new role gain more than the four RPCs, and others could let prior gates be bypassed during or after transition. Once the conditions below are written into the design and test plan, this can be re-reviewed as **APPROVED DESIGN PREPARATION**.
+
+This review covers source design only. It does not certify any provider behavior, account, Auth configuration or deployment.
+
+---
+
+## What is already sound
+
+- No global Auth hook. `authenticated`, the old policies, provider RLS on `subscription`/`schema_migrations`, and ownership all stay unchanged.
+- The executor `kora_cartera_operator` stays separate. Neither the session role nor `authenticator` gets membership in it.
+- Provider relations are checked by effective-privilege denial rather than by RLS. This is the correct fix for the blocker. Because registered identities no longer run as `authenticated`, the access `authenticated` has to provider relations stops mattering for them, provided transition and downgrade are closed. That is what conditions C8–C11 cover.
+- The design checks both the SQL role and the signed claim, and does not use `user_metadata` or the request body.
+- Ever-registered identities fail closed. `restricted:false` is returned only for sessions that were never registered.
+- Rotating the role does not invalidate prior JWTs, and the design waits for maximum expiry.
+- The design explicitly states that SQL tests do not certify the API root, Storage, Realtime or backends, and that approval does not mean activation.
+
+---
+
+## Required changes (blocking for design approval)
+
+### A. Privilege surface of `kora_cartera_session`
+
+**C1. PUBLIC defaults apply to every object, not only managed ones.** A new role inherits everything granted to `PUBLIC`. The checks currently target the managed relations and managed SECURITY DEFINER functions. They must be extended to:
+- **Functions:** `EXECUTE` is granted to PUBLIC by default. Every function in every schema where the role has `USAGE` (at least `public` and the predicate schema) must either be one of the four RPCs (or the predicate, if justified) or have `has_function_privilege('kora_cartera_session', oid, 'EXECUTE') = false`. Any other executable function aborts. Executable SECURITY DEFINER functions are the highest severity.
+- **Relations:** this covers all relations, views, matviews, foreign tables and sequences in those schemas, not only the 13. Use `has_table_privilege`, `has_any_column_privilege` and `has_sequence_privilege` with every privilege type. This matters because RLS policies created without a `TO` clause apply to PUBLIC. A PUBLIC table grant combined with a `TO public` policy would expose data to the new role.
+- **Schemas:** enumerate every schema with effective `USAGE`/`CREATE` for the role, including `extensions`, `graphql_public`, `storage`, `realtime`, `auth`, `kora_private` and any exposed PostgREST schema. Anything beyond the approved set aborts.
+- **Default ACLs:** `pg_default_acl` entries that grant to PUBLIC or to the new role in the reachable schemas must fail. Otherwise a future migration silently widens the role.
+- **Database level:** record `CONNECT`/`TEMP` granted to PUBLIC as known baseline (it is low risk with NOLOGIN and no raw SQL). Do not leave it unstated.
+
+**C2. Justify or remove `USAGE` on the predicate schema.** The RPCs run as the executor, so the session role probably does not need it. If it is kept, list exactly which objects in that schema are reachable. Require that the predicate is not SECURITY DEFINER, or that it is definer-safe with a pinned `search_path` and no side effects.
+
+**C3. Define the RPC EXECUTE matrix explicitly.** For each of the four RPCs, state the grants to `kora_cartera_session`, `authenticated`, `anon` and PUBLIC. Require PUBLIC and `anon` to be revoked. If `authenticated` currently has EXECUTE, decide explicitly whether it keeps it during transition (with the in-function denial for registered identities) or loses it. The statement "no se cambian permisos de authenticated" must not conflict with this. Every RPC also keeps a pinned `search_path`, an owner equal to the executor, and no dynamic SQL from inputs.
+
+**C4. Close membership in both directions.**
+- *Forward:* the session role is a member of nothing. That includes `pg_read_all_data`, `pg_write_all_data`, `pg_signal_backend`, `pg_monitor`, any predefined role and any role with BYPASSRLS. Check this with `pg_has_role(..., 'MEMBER'/'USAGE'/'SET')` across all roles.
+- *Reverse:* `pg_auth_members` shows exactly one member of `kora_cartera_session`, which is `authenticator`. The membership must have `admin_option = false`, `inherit_option = false`, `set_option = true`, and a known grantor. No other role, including `authenticated`, `anon`, `service_role`, or the Storage and Realtime admin roles, may hold it unless C9 decides otherwise.
+- Also assert NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION and NOBYPASSRLS.
+- **Postgres version:** `SET TRUE / INHERIT FALSE / ADMIN FALSE` syntax requires PG16 or later. Detect the server version first. On PG15, note that membership always implies SET, and rely on `authenticator` being NOINHERIT. In that case the check must assert that `authenticator` is NOINHERIT, not assume it.
+
+**C5. Role-level settings.** Supabase applies `statement_timeout` (and similar settings) per impersonated role. A new role without them runs RPCs without a timeout. Require `ALTER ROLE kora_cartera_session SET statement_timeout` (and lock timeout if used) to be at least as strict as `authenticated`. Include `pg_db_role_setting` in the fingerprint. If a PostgREST `db-pre-request` function is configured, state whether the new role must execute it. Either way, it must not be executable through C1 leakage.
+
+**C6. FALSE policies on managed objects are a provider-surface change.** Adding policies to "los tres objetos administrados" means altering provider-owned tables. This needs ownership and is outside the authorized scope. If the role has no grants (C1), these policies are only defense in depth. Either drop them from this design, or mark them as a separate, unapproved provider-surface item. FALSE policies on Cartera-owned public tables are fine. They must be `AS RESTRICTIVE ... TO kora_cartera_session`, and the tests must confirm they cannot affect any other role.
+
+**C7. Fingerprint scope.** Extend the fingerprint beyond "funciones/ACL administradas" to cover:
+- `pg_roles` attributes for the session role, the executor and `authenticator`
+- `pg_auth_members` rows touching them
+- `pg_db_role_setting`
+- `pg_default_acl`
+- `proacl`, `prosecdef`, `proconfig` and `proowner` for every function reachable per C1
+- schema ACLs
+- policies on Cartera tables
+
+Recompute it at activation, not only at preparation. Any drift blocks activation without automatic resealing, consistent with the existing rule.
+
+### B. Identity, Auth and transition
+
+**C8. Specify how the RPC detects the role.** Inside a SECURITY DEFINER function, `current_user` is the definer and `session_user` is `authenticator`. Neither proves the caller's role. The design must name the mechanism (for example, `current_setting('role')` as set by PostgREST, compared against `request.jwt.claims->>'role'`). It must also be validated in test 2 through an `authenticator` → `SET ROLE` path that reproduces how PostgREST sets the role, transaction-local included. The check should also reject JWTs with `is_anonymous = true` and resolve identity only from `sub` against the registry.
+
+**C9. Behavior of non-PostgREST consumers of the `role` claim.** Storage, Realtime, GraphQL and Edge Functions also read the `role` claim. The design must state the expected fail-closed outcome for each. That means an error or denial, never a fallback to a privileged role. It must also assert that the service connection roles are not members of the new role unless explicitly decided. Two notes on Realtime:
+- Broadcast and Presence on public channels do not consult database grants. That stays under the existing Realtime gate and is not solved by this design.
+- `realtime.subscription.claims_role` is a provider relation, and its RLS is unchanged.
+
+**C10. Auth-side integrity of the role field.** Test 5, run in a separate environment, must also show that:
+- the role persists across token refresh, password or email change, and re-login
+- the user cannot change their own role through self-service user update
+- no existing access-token hook or other admin tooling overwrites the role
+- the role is never added to any Auth admin-roles configuration
+
+Add a preparation and activation check, run by a server process and not exported, with two conditions:
+- (a) every user whose Auth role is `kora_cartera_session` is in the active registry
+- (b) no active registered identity has the role `authenticated`
+
+The SDK's local documentation for `AdminUserAttributes.role` is a typing contract. It is evidence for test design, not proof of server behavior.
+
+**C11. Downgrade, rollback and deactivation.** A registered identity that ends up with an `authenticated` JWT must stay fully restricted. That could happen through a role reset, rollback, or an old token. The pre-existing restrictive policies must therefore apply to every ever-registered `sub`, not only active ones. Define the deactivation path: revoke sessions, the RPC's active-check denies immediately, and the role is never downgraded to `authenticated` as a way of "unlocking". Define rollback the same way: revert the Auth role and keep the restriction, never reopening ERP access.
+
+**C12. Application and edge code that branches on the role.** Audit Cartera and any shared server or edge code for logic such as `role === 'authenticated'`, `role !== 'anon'`, or `session.user.role`. A new role value must not be treated as privileged or as "logged-in ERP user" by any such check. Add fictional tests for these branches.
+
+**C13. Order of the transition steps.** Make the order explicit:
+1. Verify the individual identity by user UUID, not email.
+2. Apply the temporary sign-in block.
+3. Revoke sessions and refresh tokens globally.
+4. Wait until the maximum access-token expiry plus clock skew has passed.
+5. Update the role server-side.
+6. Lift the block.
+7. Have the user sign in fresh.
+8. Run the server-side role and scope check (C10 a/b).
+
+This applies only at activation, which is not approved here.
+
+---
+
+## Recommended (non-blocking)
+
+- Add tests for a JWT whose `role` names a non-existent role, and for a role claim with case or whitespace variants. Both must produce an error and no fallback.
+- Add a test showing the new role sees nothing beyond the four RPCs on the PostgREST root/OpenAPI. This is input to the existing API-root gate, not a substitute for it.
+- Add a negative test: from the new role, call each of the 13 managed relations and a sample of PUBLIC-executable `public` functions through the API model, and expect denial.
+
+---
+
+## Does this widen existing roles or bypass gates?
+
+- **`authenticated`, `anon`, Gerencia, auditoría and tiendas:** not widened as written. Test 4 must assert byte-identical ACLs, memberships and policies for them, and C3 must not silently change `authenticated`.
+- **`authenticator`:** it is widened by gaining SET on one new role. This is acceptable only if C1, C2 and C4 hold, so that the role's effective reach is the four RPCs and nothing else.
+- **Executor:** not widened, provided the RPCs stay definer-owned and no membership is granted.
+- **Prior gates:** they are preserved only if C6 is removed from scope, C9 keeps Storage and Realtime under their existing gates, and C7 drift blocks activation.
+
+## Not approved by this review
+
+This review does not approve any of the following:
+- modifying, assigning roles to, banning or signing out any real account
+- service-role key use
+- Auth configuration
+- provider-owned policies or ACLs
+- Storage, Realtime, GraphQL or backend behavior
+- external limits
+- installation or publication
+
+A future **APPROVED DESIGN PREPARATION** would cover only isolated source and fictional tests in a separate environment.

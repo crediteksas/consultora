@@ -1,0 +1,72 @@
+{
+  "targets": [
+    {
+      "name": "credit_collection_events",
+      "defaults": [
+        {
+          "column": "id",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "column": "created_at",
+          "default": "now()"
+        }
+      ],
+      "triggers": [
+        "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_23843\" AFTER INSERT ON public.credit_collection_events FROM credit_portfolio_obligations NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+        "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_23844\" AFTER UPDATE ON public.credit_collection_events FROM credit_portfolio_obligations NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+        "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_23848\" AFTER INSERT ON public.credit_collection_events FROM perfiles NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+        "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_23849\" AFTER UPDATE ON public.credit_collection_events FROM perfiles NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+        "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_42634\" AFTER INSERT ON public.credit_collection_events FROM liquidation_operations NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+        "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_42635\" AFTER UPDATE ON public.credit_collection_events FROM liquidation_operations NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+        "CREATE TRIGGER cobra_events_no_truncate BEFORE TRUNCATE ON public.credit_collection_events FOR EACH STATEMENT EXECUTE FUNCTION cobra_krediya_immutable()",
+        "CREATE TRIGGER cobra_krediya_guard_event_history BEFORE DELETE OR UPDATE ON public.credit_collection_events FOR EACH ROW EXECUTE FUNCTION cobra_krediya_guard_event_history()",
+        "CREATE TRIGGER cobra_krediya_validate_event BEFORE INSERT ON public.credit_collection_events FOR EACH ROW EXECUTE FUNCTION cobra_krediya_validate_event()"
+      ],
+      "constraints": [
+        "CHECK (((obligation_id IS NOT NULL) OR (operation_id IS NOT NULL)))",
+        "CHECK ((actor_type = ANY (ARRAY['cobra'::text, 'humano'::text, 'sistema'::text])))",
+        "CHECK ((channel = ANY (ARRAY['whatsapp'::text, 'call'::text, 'sms'::text, 'email'::text, 'platform'::text, 'internal'::text])))",
+        "UNIQUE (client_request_id)",
+        "FOREIGN KEY (created_by) REFERENCES perfiles(id)",
+        "CHECK ((event_type = ANY (ARRAY['contact_attempt'::text, 'contacted'::text, 'promise'::text, 'promise_kept'::text, 'promise_broken'::text, 'dispute'::text, 'note'::text, 'escalated'::text])))",
+        "FOREIGN KEY (obligation_id) REFERENCES credit_portfolio_obligations(id) ON DELETE RESTRICT",
+        "FOREIGN KEY (operation_id) REFERENCES liquidation_operations(id) ON DELETE RESTRICT",
+        "PRIMARY KEY (id)",
+        "CHECK (((promise_amount IS NULL) OR (promise_amount > (0)::numeric)))"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "cobra_krediya_save_collection",
+      "schema": "public",
+      "definition": "CREATE OR REPLACE FUNCTION public.cobra_krediya_save_collection(p_request_id uuid, p_operation_id uuid, p_event_type text, p_channel text, p_note text, p_promise_date date DEFAULT NULL::date, p_promise_amount numeric DEFAULT NULL::numeric)\n RETURNS jsonb\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\ndeclare e public.credit_collection_events%rowtype; obligation uuid; saved uuid;\nbegin\n if not coalesce(public.cobra_quality_operator(),false) then raise exception 'cobra_event_not_authorized' using errcode='42501'; end if;\n if p_request_id is null or p_operation_id is null then raise exception 'cobra_event_invalid_reference'; end if;\n select * into e from public.credit_collection_events where client_request_id=p_request_id;\n if e.id is null then\n  select id into obligation from public.credit_portfolio_obligations where operation_id=p_operation_id;\n  insert into public.credit_collection_events(operation_id,client_request_id,obligation_id,actor_type,event_type,channel,note,promise_date,promise_amount,created_by)\n  values(p_operation_id,p_request_id,obligation,'humano',p_event_type,p_channel,btrim(p_note),p_promise_date,p_promise_amount,auth.uid())\n  on conflict(client_request_id) do nothing returning id into saved;\n  select * into e from public.credit_collection_events where id=saved or client_request_id=p_request_id;\n end if;\n if e.id is null or e.created_by is distinct from auth.uid() or e.operation_id is distinct from p_operation_id or e.event_type is distinct from p_event_type or e.channel is distinct from p_channel or e.note is distinct from btrim(p_note) or e.promise_date is distinct from p_promise_date or e.promise_amount is distinct from p_promise_amount then raise exception 'cobra_event_idempotency_conflict'; end if;\n return jsonb_build_object('id',e.id,'request_id',e.client_request_id,'operation_id',e.operation_id,'obligation_id',e.obligation_id,'event_type',e.event_type,'created_at',e.created_at,'duplicate',saved is null,'status','collection_saved','payment_created',false);\nend;\n$function$\n"
+    },
+    {
+      "name": "cobra_krediya_validate_event",
+      "schema": "public",
+      "definition": "CREATE OR REPLACE FUNCTION public.cobra_krediya_validate_event()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nbegin\n -- Legacy RPC remains unchanged. New operation-based events have their own explicit checks.\n if new.operation_id is null then\n  if current_user in ('anon','authenticated') then raise exception 'cobra_direct_legacy_event_denied' using errcode='42501'; end if;\n  if new.client_request_id is not null then raise exception 'cobra_event_invalid_reference'; end if;\n  return new;\n end if;\n if not coalesce(public.cobra_quality_operator(),false) or new.created_by is distinct from auth.uid() or new.actor_type is distinct from 'humano' then raise exception 'cobra_event_not_authorized' using errcode='42501'; end if;\n if new.client_request_id is null or not exists(select 1 from public.cobra_krediya_cut_operations where operation_id=new.operation_id) then raise exception 'cobra_event_without_reviewed_cut'; end if;\n if new.obligation_id is not null and not exists(select 1 from public.credit_portfolio_obligations where id=new.obligation_id and operation_id=new.operation_id) then raise exception 'cobra_event_wrong_obligation'; end if;\n if new.event_type not in ('contact_attempt','contacted','note','promise') or new.event_type is null or new.channel not in ('call','whatsapp','email','platform','internal') or new.channel is null or length(btrim(coalesce(new.note,''))) not between 1 and 600 then raise exception 'cobra_event_invalid_fields'; end if;\n if new.event_type='promise' then\n  if new.promise_date is null or new.promise_date<(now() at time zone 'America/Bogota')::date or new.promise_amount is null or new.promise_amount<=0 or new.promise_amount<>trunc(new.promise_amount) or new.promise_amount>90071992547409 then raise exception 'cobra_event_invalid_promise'; end if;\n elsif new.promise_date is not null or new.promise_amount is not null then raise exception 'cobra_event_unexpected_promise';\n end if;\n new.created_at=clock_timestamp();new.note=btrim(new.note);\n return new;\nend;\n$function$\n"
+    },
+    {
+      "name": "cobra_quality_operator",
+      "schema": "public",
+      "definition": "CREATE OR REPLACE FUNCTION public.cobra_quality_operator()\n RETURNS boolean\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n select (select auth.uid()) is not null and public.rol_actual() is not null\n and (public.rol_actual() in ('gerencia','auditoria') or public.tiene_capacidad_cartera('manage'));\n$function$\n"
+    },
+    {
+      "name": "creditos_cartera_puede_leer",
+      "schema": "public",
+      "definition": "CREATE OR REPLACE FUNCTION public.creditos_cartera_puede_leer(p_origen_codigo text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  select exists (\n    select 1 from public.perfiles p\n    where p.id = (select auth.uid()) and p.activo\n      and (p.rol in ('gerencia','auditoria') or p.tienda_codigo = p_origen_codigo)\n  );\n$function$\n"
+    },
+    {
+      "name": "rol_actual",
+      "schema": "public",
+      "definition": "CREATE OR REPLACE FUNCTION public.rol_actual()\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n select rol from public.perfiles where id=auth.uid() and activo;\n$function$\n"
+    },
+    {
+      "name": "tiene_capacidad_cartera",
+      "schema": "public",
+      "definition": "CREATE OR REPLACE FUNCTION public.tiene_capacidad_cartera(p_capacidad text DEFAULT 'read'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  select (select auth.uid()) is not null and exists (\n    select 1\n    from public.credit_portfolio_operators operator\n    where operator.perfil_id = (select auth.uid())\n      and operator.active\n      and case p_capacidad\n        when 'read' then operator.capability in ('read','manage')\n        when 'manage' then operator.capability = 'manage'\n        else false\n      end\n  );\n$function$\n"
+    }
+  ]
+}

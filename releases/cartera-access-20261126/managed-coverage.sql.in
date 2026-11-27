@@ -1,0 +1,13 @@
+-- All row-bearing managed relations, including any provider partitions/views.
+-- No permissions or ownership on provider objects are changed here.
+create function kora_private.cartera_assert_managed() returns void language plpgsql security definer set search_path='' as $$
+declare expected jsonb:='__MANAGED_RELATIONS__'::jsonb;actual jsonb;
+begin
+ select coalesce(jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname,'kind',c.relkind) order by n.nspname,c.relname),'[]') into actual from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace where n.nspname in('storage','realtime') and c.relkind in('r','p','v','m','f');
+ if actual is distinct from expected then raise exception 'cartera_managed_inventory_changed';end if;
+ if exists(select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+ where n.nspname in('storage','realtime') and c.relkind in('r','p','v','m','f')
+ and not((n.nspname='storage' and c.relname in('objects','buckets'))or(n.nspname='realtime' and c.relname='messages'))
+ and (not c.relrowsecurity or c.relkind not in('r','p') or exists(select 1 from pg_catalog.pg_policy p where p.polrelid=c.oid and p.polpermissive and exists(select 1 from unnest(p.polroles) r where r=0 or pg_catalog.pg_has_role('authenticated',r,'USAGE'))))) then raise exception 'cartera_managed_surface_not_isolated';end if;
+end$$;
+revoke all on function kora_private.cartera_assert_managed() from public,anon,authenticated,service_role,kora_cartera_operator;

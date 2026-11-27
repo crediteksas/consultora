@@ -1,0 +1,79 @@
+# Cartera R3 review: CHANGES REQUIRED
+
+This review covers only the supplied source and fictional tests. It does not certify managed Supabase, real sessions, publication, activation or any account.
+
+Most R2 findings are resolved in code. Two concrete defects remain in the candidate. One more item needs an explicit decision before it counts as resolved.
+
+## Blocking defects
+
+### D1. Deny coverage only protects three hard-coded managed relations
+
+`cartera_assert_coverage`, the install preflight, `cartera_assert_ready`, the fingerprint and `checkCarteraCoverage` all name exactly three managed relations: `storage.objects`, `storage.buckets` and `realtime.messages`. The `public` inventory is exact. The `storage` and `realtime` inventories are not checked at all.
+
+- **How it fails:** Storage and Realtime run their own migrations, outside the project pipeline. They have added RLS relations reached as `authenticated`, such as `storage.prefixes`, `storage.s3_multipart_uploads`, `storage.s3_multipart_uploads_parts` and newer analytics or vector bucket tables. Supabase also grants table privileges in `storage` to `authenticated` and relies on RLS.
+- **Consequence:** A permissive project policy on any such relation applies to the restricted principal. Nothing trips: not the RPC fingerprint, not `assert_ready`, not the CI gate.
+- **Required change:**
+  - Add an exact inventory of every relation in `storage` and `realtime`, including Realtime partitions, to the install preflight, `cartera_assert_ready` and the coverage gate.
+  - Every listed relation must either carry `cartera_dedicated_deny` or be asserted to have RLS enabled with no policy or grant that admits `authenticated`.
+  - Any unlisted managed relation must fail closed.
+  - Add a fictional test where a fourth `storage` table with a permissive `authenticated` policy blocks install, activation and the gate.
+
+The provider ownership exception can stay a managed-provider gate. Detecting new relations is code, and belongs in the candidate.
+
+### D2. The integrated contract checker is never executed
+
+The R3 tests call `checkCarteraCoverage` directly. No test runs `candidate/check-permission-contract.mjs`, the file that is supposed to make the gate mandatory.
+
+Two risks are unverified:
+
+- **Declaration order:** `errors.push(...)` is inserted just after the early return. If `errors` is declared further down the original file, this is a TDZ `ReferenceError`. The checker would then break for every release, not only Cartera ones.
+- **Import path:** the checker imports `./cartera-coverage-gate.mjs`. No build step places that file next to the checker in `scripts/supabase-compat/`.
+
+Required change: add a test that imports the generated checker from its target location. It should run `checkPermissionContract(before, after)` over a passing snapshot, an omitted relation, a changed deny and a publication, and assert the expected `ok` and `errors` values. The runbook makes this gate an activation condition, so the preparation evidence should show it works.
+
+## Decision required (not a security defect)
+
+### X1. Cross-origin follow-ups are saved with `obligation_id = NULL`
+
+`cobra_krediya_save_collection` runs as `kora_cartera_operator` and looks up the obligation like this:
+
+```sql
+select id into obligation from public.credit_portfolio_obligations where operation_id=p_operation_id
+```
+
+That lookup is filtered by the origin-scoped `creditos_cartera_puede_leer` policy. For the origin-B operation in the two-origin test, the event is therefore stored with no obligation. The same action by Gerencia links it.
+
+Effects:
+
+- The view's `last_collection_at` excludes the event.
+- Obligation-scoped event visibility, including what origin-B users see for their own credit, differs depending on who recorded the follow-up.
+
+This matches existing behaviour for any store-scoped `manage` holder, so it conforms to the stated two-domain contract. It now becomes the main path, though. Choose one:
+
+- **(a) Fix it without widening classic scope.** Add a narrow, pinned SECURITY DEFINER helper that returns only the obligation id for cut-linked operations to quality operators. Existing callers would get identical results.
+- **(b) Document NULL linkage as accepted behaviour.** Then assert it explicitly in the two-origin test.
+
+The current test only checks `payment_created`.
+
+## Non-blocking corrections
+
+1. **The documented row limit is unreachable.** The runbook promises 50,500 classic rows. `load()` pages the portfolio and the events concurrently (up to 101 + 101 calls), plus settings, against a budget of 120 calls per minute. The practical ceiling is about 29,000 rows per load. It fails closed with an error, so correct the documentation or the limits and add a test.
+2. **The build is not reproducible from the repository.** `build-core.py` reads unpinned local evidence files from an absolute local path. Pin their hashes in the manifest and assert them in the build, as is already done for `fund_sql`.
+3. **One test runs a different copy of the code.** `connection-native.test.mjs` loads persistence from `../cobra-evolucion-20261126/` rather than the staged `cobra-krediya-persistence.js`. Load the staged copy, or assert that the two hashes are equal.
+4. **UI scope labelling is misleading.**
+   - The shell's store label shows "Aliados" for the restricted role, while classic portfolio scope is the single `tienda_codigo`. Show the actual origin.
+   - Handle a null `tienda_codigo` explicitly. Today the empty-state text implies there are no credits.
+5. **Every catalog change closes Cartera.** Any unrelated catalog change, extension update or role membership change closes the Cartera RPCs, because of the fingerprint and the hard-coded inventory. That fails closed, which is acceptable. Document a reviewed re-seal migration template so recovery doesn't become ad hoc.
+
+## R2 resolutions confirmed in code and tests
+
+- **1. Activation:** compares the argument to both the stored install seal and a fresh fingerprint, never reseals, and reruns the full preflight. Coverage is asserted at install end, at activation and on each RPC. The rollback test is present.
+- **2. Subject alias:** `cartera_subject` is invoker-bound to the `auth.uid` OID, with PUBLIC execute and no `auth` USAGE. The anon, service and backend comparisons are present.
+- **3. Pins:** dependency pins are exact before and after the rewrites. The real Aliados helper is executed.
+- **4. Scope:** the two-domain endpoints are consistent apart from X1. The manage revocation tests are correct.
+- **5. Installer:** the non-superuser installer test covers both core and full. The ownership assignments are correct.
+- **6. Wrapper:** the wrapper and old debt hashes are pinned and checked after the clock substitution.
+- **7. Runbook:** states immediate impact, prerequisite ordering, verification after each transaction and forward-fix only.
+- **Other R2 fixes:** local importer and authorizer denials, gated context-help mounts and removal of the unreachable RLS regex are all present.
+
+Still required before any activation: provider reconstruction, real HTTP/JWT/Storage/Realtime/signed-URL and backend surfaces, existing roles' real sessions, upstream request controls, the Andrea session and per-call fingerprint performance. NOVA integration remains excluded.

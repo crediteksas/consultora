@@ -1,0 +1,89 @@
+# Cartera R4 Review: CHANGES REQUIRED (narrow)
+
+This review covers only the provided source, baselines and fictional tests. It does not cover deployment, managed Supabase, real sessions, provider catalogs or activation.
+
+D2, X1 and the other R3 points are accepted as prepared. D1's SQL predicate and gate logic look correct, but the new isolation branch has no negative test. One runbook sentence is also stale. Both fixes are small and source-only.
+
+## D1: Managed inventory and isolation
+
+**What I verified:**
+- **Exact inventory:** The inventory covers `r,p,v,m,f` in `storage`/`realtime`. The SQL ordering matches the baseline ordering under C collation. For example, `bucket_lifecycle_states` sorts before `buckets`, and `s3_*` sorts before `vector_indexes`.
+- **Same check in every path:** `scope-core.sql`, `scope-full.sql` and `cartera_assert_managed()` all use it. The preflight is a nested PL/pgSQL `declare … begin … end;` block. Its shadowing of `expected`/`actual` is valid and scoped.
+- **Seal coverage:** The fingerprint now covers every relation in both schemas.
+- **Policy predicate:** The check `r=0 or pg_has_role('authenticated',r,'USAGE')` has the right semantics.
+  - `USAGE` corresponds to `has_privs_of_role`, which is what RLS uses to decide whether a policy applies.
+  - It is correct under NOINHERIT roles and PG16 per-grant `inherit` options.
+  - `pg_has_role` with OID 0 returns false rather than erroring.
+- **Provider objects untouched:** No privileges, ownership or RLS on provider objects are modified.
+- **Gate mirrors SQL:** The gate's `authenticated_permissive` flag, its kind check and its unexpected-relation handling match the SQL. The managed set comes from the pinned inventory module, not from the snapshot.
+
+**Required fix: test the isolation branch itself.**
+
+The fourth-table test is aborted by `cartera_managed_inventory_changed` before the isolation clause ever runs. As a result, `cartera_managed_surface_not_isolated` and the gate's "managed surface not isolated" error are never exercised. Add fictional cases on an *already inventoried* non-overlay relation, for example `storage.migrations`:
+
+1. A permissive policy `to public`.
+2. A permissive policy to a fictional role granted to `authenticated` with `inherit true`.
+3. A control case: the same membership with `inherit false`. It should *not* trip, which shows the predicate tracks inheritance correctly.
+4. `disable row level security`.
+
+Each case should assert three things:
+- Atomic install abort, with no role or `cartera_subject` created.
+- `cartera_activate`/`assert_ready` rejection on an installed fixture, with the contract still disabled.
+- The integrated `checkPermissionContract` reporting the specific isolation error.
+
+**Required fix: stale runbook sentence.**
+
+`RECUPERACION-Y-PUBLICACION.md` § "Migraciones y publicaciones futuras" still says coverage applies to "cada tabla pública y las tres tablas administradas". Align it with the later paragraph:
+- Every public table and the three overlays require the exact deny.
+- All other inventoried managed relations require isolation.
+- Any other relation aborts the install.
+
+**Document as an activation gate (not a source blocker):**
+- **Daily Realtime partitions.** Real Realtime normally creates daily `realtime.messages_*` partitions. None appear in the baseline. Under exact inventory, a partition rotation closes all guarded RPCs, and every RPC runs `assert_ready`. That fails closed, which is consistent with your "deliberate blocking gate". The runbook should still name it explicitly so it is not mistaken for an incident. Accepting partitions requires a separately reviewed design.
+- **Managed functions are outside the fingerprint.** These are owner-run `SECURITY DEFINER` functions in `storage`/`realtime`, and they bypass non-forced RLS. They belong to the provider/API behavior gate you already listed.
+
+## D2: Integrated checker execution
+
+**Accepted.** The test copies the generated checker, the coverage gate and the inventory module into an isolated `scripts/supabase-compat/` layout. It then imports the checker dynamically, so real import resolution and the declaration order of `errors.push(...)` are exercised.
+
+The mutations hit the intended targets:
+- `tables[0]` is `public.abonos`.
+- `pop()` removes `storage.vector_indexes`.
+
+**Optional improvement:** assert the specific message per mutation (omitted / deny changed / publication) instead of `/Cartera/`. Your description says "expected errors asserted", and the current assertion is looser than that.
+
+**Optional improvement:** `build-release-gate.py` reads the active `catalog-query.sql` and `check-permission-contract.mjs` without pinning their pre-image. Add source pins like those in `build-core.py`, so that rebase drift fails the build instead of silently regenerating.
+
+The integration of these four files at their target paths is still pending and still required before activation. You state this correctly.
+
+## X1: Decision (b), null linkage
+
+**Accepted as documented.** The behavior is consistent across all layers:
+- **Storage:** `save_collection` stores `obligation_id` as NULL when the obligation is not visible.
+- **Read policy:** `cartera_tech_read_*` allows the event through the cut branch only when the user has `manage`.
+- **Classic page:** `mapEventsToPortfolio` routes the event to `unlinked`. It raises no error and creates no row.
+- **Classic view:** The view keys on `obligation_id`, so `last_collection_at` is unchanged.
+- **Tests:** The `read` downgrade test confirms the count drops back to 1.
+- **No overclaiming:** `SCOPE-DECISION.md` does not present this as a linkage fix.
+
+## Other R3 points
+
+All accepted:
+- The runbook throughput wording.
+- `build-core` repo-only pins.
+- The allowlisted VM resolver for staged persistence and domain.
+- The sidebar origin and unassigned texts, and the classic-page "no-origin ≠ zero credits" notice.
+- The non-executable reseal template, which pins both seals, reruns `assert_ready` and recomputes nothing live.
+
+One optional point on the reseal template: it restores `enabled=was_enabled`. Consider whether a reseal should leave the contract disabled until a separate reviewed activation. That is a policy choice, not a defect.
+
+## Unchanged status
+
+None of the following is certified here; all remain mandatory gates:
+- SQL is staged only: contract disabled, authority empty, no account assignments, no balances, payments or production SQL.
+- Managed reconstruction and provider catalogs (including Realtime partition behavior).
+- HTTP/JWT, Storage, Realtime, signed URLs and backends.
+- Upstream limits.
+- Old ordinary-user sessions and Andrea's session.
+
+NOVA stays OFF and excluded.

@@ -1,0 +1,10 @@
+{
+  "scope": "Compiled from the unchanged proposed fund migration only; fictional database.",
+  "functions": [
+    {
+      "signature": "cobra_krediya_history_cuts(uuid)",
+      "definition": "CREATE OR REPLACE FUNCTION public.cobra_krediya_history_cuts(p_operation_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE\n SET search_path TO ''\nAS $function$\ndeclare doc text; docs int; result jsonb;\nbegin\n if not coalesce(public.cobra_quality_operator(),false) then raise exception 'cobra_history_not_authorized' using errcode='42501';end if;\n select min(r->>'document'),count(distinct r->>'document') into doc,docs from public.cobra_krediya_cut_operations l join public.cobra_krediya_cuts c on c.id=l.cut_id cross join lateral jsonb_array_elements(c.observations) r where l.operation_id=p_operation_id and r->>'operation_id'=p_operation_id::text;\n if docs=0 then raise exception 'cobra_history_not_found';end if;\n if docs<>1 then raise exception 'cobra_history_identity_review';end if;\n -- Include every saved cut of each observed cohort, even when this customer is absent.\n with months as(select distinct c.cohort_month from public.cobra_krediya_cuts c where exists(select 1 from jsonb_array_elements(c.observations) r where r->>'document'=doc))\n select coalesce(jsonb_agg(jsonb_build_object('id',c.id,'cohort_month',c.cohort_month,'cutoff',c.cutoff,'received_at',c.received_at,'source_name',c.source_name,'file_sha256',c.file_sha256,'observations',(select coalesce(jsonb_agg(r),'[]') from jsonb_array_elements(c.observations) r where r->>'document'=doc),'population_count',c.row_count) order by c.cutoff,c.received_at,c.id),'[]') into result from public.cobra_krediya_cuts c join months m using(cohort_month);\n if jsonb_array_length(result)>1000 then raise exception 'cobra_history_requires_narrower_scope';end if;\n return jsonb_build_object('schema_version',1,'operation_id',p_operation_id,'cuts',result,'automatic_decision',false,'official_quality',false);\nend $function$\n",
+      "md5": "2c83998920c39b878c0ab32634cabbc8"
+    }
+  ]
+}

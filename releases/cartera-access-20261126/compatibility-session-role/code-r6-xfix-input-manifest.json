@@ -1,0 +1,14 @@
+{
+  "files": {
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-proof.mjs": "4b0b609315d1258b1130b4418ce32607b2f6a0fd4ba49b1c76be986902f06ec8",
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-lifecycle.mjs": "15be1af8beee503e18eafdf5c5c1c3b9a55322b0842f1ad3d360b892bf639dee",
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-lifecycle.test.mjs": "00f4c599c5148b7d9349fcc8abdc00183f963803961e0c88ae358395a3f8a3dc",
+    "releases/cartera-access-20261126/compatibility-session-role/build-r6-gate.py": "d0e739817df3ff0d312ea29aab5d18101dc474b0bc9376d7e8aaa7070d622b4b",
+    "releases/cartera-access-20261126/compatibility-session-role/r6-base-input-pins.json": "04a6e357d2c722aafb1c76ef1fa40ef7335c73f8cb0e640a8905299e92da6403",
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/catalog-query.sql": "19ef9ae8c2503bf14e64327d89d040961b2ce93fa3fe75a3f10f8533092ee48e",
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/cartera-coverage-gate.mjs": "bbc3eb3ed4795ae1b60b7355e2c5b51202bf663bf67cbe81728db4416e96ebe5",
+    "tests/security/build-public.test.mjs": "c1687e707b8582f1c21fedab0c17701c8226b872b3140a17b34005e17f5790e1",
+    "releases/cartera-access-20261126/compatibility-session-role/r6-shell.test.mjs": "1872eb35e849f18b63654d42706f913d216ad08507ab950c8f69a7e49978f1b3"
+  },
+  "input_sha256": "114a46c9e4238ba581d1453854c3a5d551aa2804a7508530381459d58c8bef39"
+}

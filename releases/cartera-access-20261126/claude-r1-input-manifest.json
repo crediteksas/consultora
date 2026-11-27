@@ -1,0 +1,20 @@
+{
+  "authorization": "User: Autorizado, 2026-11-26; code and fictional tests only",
+  "input_sha256": "7426dbaeaa3e52d6ec4b8ff09a2c836d0e440ffb9413a251201371563b855000",
+  "sources": {
+    "candidate/scope-full.sql": "b97e7e424d70b1d98a98b5cfb2d0b59a774eb9e8c8e10f4049088569e47d7b92",
+    "candidate/cartera-operador-client.js": "ba4505e509133b45fbaadcec743b3f2405c90edd58f0c9647833332cb353f232",
+    "core-fixture.mjs": "0c80df4706a37f22230cc17614e2c3a840be6c72eafc8a98cf2abda0e3c246b1",
+    "core-native.test.mjs": "dc70396990419c07870084b7f1f0671075f041b7f5cd262e639a6b7be72ada2e",
+    "full-fixture.mjs": "64dc155db49043e59253c2bf2f1e7eb0a613b9f7b7b37cad68024665484d3ffb",
+    "data-native.test.mjs": "cac7a014ea06bb1c21fb64b1c560a2249479bb10500385ed32907ceb18b7414e",
+    "client.test.mjs": "119348a217a3fbdedc88a62f9b749fbb4f9b7d0247198eae92fa8940b18cb047",
+    "connection-native.test.mjs": "998ad873871edfcf33ae24a08c3d66470df3c0ec6a106094ff0d7187c21f4074",
+    "shell-candidate.test.mjs": "15f2003e25778d869dc25ec21d2149b73b7318d71978ee2190132a54c7addf66",
+    "diff:sidebar.js": "ae0e2fee869013ce5cfac5387a6d60f63ed97d73c643a419faa882f303c0b01a",
+    "diff:creditos-cartera-app.js": "d8d4304e99d5844d45dca415d30284e77ddaaf26c4e1fd9c994d4fb62d2a34aa",
+    "diff:creditos-cartera.html": "ad037c9a2f00b760975941b232f7edebd61a8018845bc91ec83fc115ced621ff",
+    "diff:kora-access-control.js": "cbff1a38caacbc47b5cb4388cf644d88665fc57b214907efb7ae364aab2f119c"
+  },
+  "production_data_included": false
+}

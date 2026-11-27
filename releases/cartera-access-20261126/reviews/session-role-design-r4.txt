@@ -1,0 +1,78 @@
+# Review: R6 dedicated Cartera session role, final bounded re-review
+
+## Verdict: **CHANGES REQUIRED (fixture evidence only, two assertions)**
+
+The design text has no remaining unsafe or incoherent element. CR-1, CR-2 and CR-4 are resolved, and CR-3 is resolved except for two assertions. Those two assertions name properties that their test cannot distinguish from the failure they are meant to rule out. No design change is required.
+
+You can fix them either by making the tests discriminating or by renaming the assertions to what they actually show. Once that is done, this scope is **APPROVED DESIGN PREPARATION**, with every gate still open and blocking.
+
+**Scope.** As before, this covers source and design only. Not covered:
+
+- KORA integration and the unwritten delta;
+- hosted Supabase;
+- Storage, Realtime and GraphQL;
+- the two backends;
+- external limits;
+- downgraded-token surfaces;
+- backend audits.
+
+I also cannot verify that `test_source_sha256` matches the source shown here, since that would need byte-exact hashing. The in-script computation is the correct provenance mechanism.
+
+## Status of CR-1 to CR-4
+
+| Item | Status |
+|---|---|
+| CR-1 Tier H/S and guard exception | **Resolved.** The tiers are defined. Catalog side-effect functions are now baseline with an enumerated callgraph, and the doc notes that `pg_depend` alone is insufficient for PL/pgSQL. The guard is the single named exception, its `proacl` is fingerprinted, and the PUBLIC no-op case is stated. The precedence clause covers the residual generic "alcanzable" sentence in the C1 section. |
+| CR-2 RPC matrix | **Resolved.** service_role and executor columns are present. The revocation is explicit (PUBLIC, anon, authenticated, service_role) and is checked by an exact `proacl` comparison. `cartera_subject()` has an enumerated grantee list, the session role gets no direct EXECUTE, and the delta blocks on any missing prior consumer instead of auto-granting. |
+| CR-3a Exact PUBLIC-route denials | **Resolved.** POST, GET and `GET /` assert 403 + PT403 + message. HEAD asserts 403 plus zero effects. |
+| CR-3b Role and catalog | **Resolved.** The role is created by a non-superuser CREATEROLE installer with an empty `createrole_self_grant` check. Exactly two reverse rows are asserted with all options and grantors. Attributes, version and `pg_db_role_setting` are asserted. The inventory query flags `qa_public_leak` and `qa_subject`. One note on the revoke attempt is below (N2). |
+| CR-3c Kill switch | **Resolved.** It discriminates correctly: 42501 with the role name in the message rules out fallback, and the ordinary user is unaffected. |
+| CR-3d Schema-cache reload | **Not demonstrated** (F1). |
+| CR-4 Email change | **Resolved.** The wording is now "por administrador". Self-service is stated as a prerequisite and not claimed. |
+| Counts | **Correct.** There are 60 assertions. "password sign-in succeeds" appears 9 times and "fictional account created…" twice: 60 − 8 − 1 = 51 distinct. |
+
+## Fixture changes required
+
+### F1. The reload assertions do not show that a reload happened
+
+`NOTIFY pgrst,'reload schema'` is asynchronous, and the script only sleeps 0.5 s before testing. Both "survives schema-cache reload" assertions would pass identically if the reload never ran or had not finished, because the requests could be served from the old cache.
+
+**Fix (pick one):**
+
+- **Sentinel.** Before the NOTIFY, create a new fictional function (for example `public.qa_reload_marker()` with no grants to the session role). Poll until PostgREST stops returning 404 / PGRST202 for it, then repeat the allowed RPC and the exact denial.
+- **Rename.** Call the assertions "…after NOTIFY (reload completion not verified)".
+
+### F2. The "invalid role claim never falls back" assertions are non-discriminating
+
+The probes target `/rpc/qa_bootstrap`, whose EXECUTE is revoked from anon, authenticated and service_role. A fallback to authenticated or anon would therefore also produce 401 or 403, so `status in (400,401,403)` cannot tell no-fallback from fallback.
+
+**Fix (pick one):**
+
+- **Discriminate.** Send the wrong-role tokens to a route that a fallback role *would* succeed on, such as `/qa_regular` (readable by authenticated) or `/rpc/qa_ordinary` (anon/authenticated). Assert the specific role-assumption error code and message, as the kill-switch test already does.
+- **Rename.** Call the assertions "invalid role claim is rejected".
+
+## Non-blocking notes
+
+- **N1. Fixture Tier-H query scope.** The inventory query filters `nspname='public'`, but the fixture exposes `public,realtime`. This is acceptable as the negative test of the gate. The real gate must iterate over every schema in every PostgREST/GraphQL configuration, as the design states. It must also cover side-effecting invoker functions, not only `prosecdef`.
+- **N2. Bootstrap revoke attempt.** `REVOKE … GRANTED BY supabase_admin` run as postgres may fail because postgres cannot act as that grantor, not because of a bootstrap-specific rule. The row-persists check is sound, and "cannot revoke" holds either way. Still, capture the SQLSTATE and message privately, and optionally also record the plain `REVOKE` form, which defaults the grantor to postgres and is likely a warning or no-op. The design does not depend on this outcome.
+- **N3. Anonymous guard test.** In the fixture guard, the claims cast sits inside the session branch, and PostgREST always sets claims for anon. The anonymous test therefore checks that the guard does not break anon. It does not exercise an empty-GUC cast. The empty-string risk is in RPC bodies that cast without `nullif`, such as `qa_bootstrap`. In the real RPCs, use `nullif(...,'')` there too.
+- **N4. Matrix completeness for `postgres`.** Supabase default ACLs typically also grant EXECUTE to `postgres`. The expected normalized `proacl` should state whether a `postgres` (installer) entry is present or revoked, so the exact comparison has a defined target.
+- **N5. Guard grant wording.** The sentence "El cliente solo recibe … EXECUTE explícito sobre los cuatro RPC" omits the guard EXECUTE, which the pre-request requires. The Tier-H section covers this, but align the sentence.
+- **N6. Assertion name.** "provider control remains readable by original role only" asserts only the first half. The "only" part is shown by separate assertions, so consider renaming it.
+
+## Not approved
+
+This review does not approve:
+
+- installation or deployment;
+- real account selection, role assignment, sign-out or ban;
+- service-role key use;
+- Auth configuration;
+- changes to the pre-request body or authenticator settings;
+- execution of the kill switch outside the fixture;
+- any provider-owned ACL or policy;
+- Storage, Realtime or GraphQL;
+- the two backends;
+- external limits;
+- the self-service email flow;
+- acceptance of the downgraded-token/provider-control residual, which remains not accepted and blocking.

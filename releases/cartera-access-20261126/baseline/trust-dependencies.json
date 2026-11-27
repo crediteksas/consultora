@@ -1,0 +1,30 @@
+{
+  "view": {
+    "md5": "5795039e56374ed229d7b8acd9c21616",
+    "signature": "public.creditos_cartera_operaciones",
+    "definition": " SELECT o.id,\n    o.operation_id,\n    o.credito_id,\n    o.cliente_id,\n    o.plataforma,\n    o.external_credit_id,\n    o.origen_codigo,\n    COALESCE(origen.nombre, o.origen_codigo) AS tienda,\n    COALESCE(c.nombre_completo, o.cliente_nombre_snapshot, 'Cliente sin vincular'::text) AS cliente_nombre,\n    COALESCE(c.cedula, o.cliente_documento_snapshot) AS cliente_documento,\n    o.original_amount,\n    o.outstanding_amount,\n    o.ally_paid_at,\n    o.first_due_date,\n    o.next_due_date,\n    o.status,\n    o.pre_nova,\n        CASE\n            WHEN o.pre_nova THEN 'pre_nova'::text\n            WHEN na.decision = 'approved'::text THEN 'approved'::text\n            ELSE COALESCE(na.decision, 'missing'::text)\n        END AS nova_status,\n    na.external_decision_id AS nova_decision_id,\n    na.rule_version AS nova_rule_version,\n    COALESCE(( SELECT sum(r.amount) AS sum\n           FROM public.credit_repayments r\n          WHERE r.obligation_id = o.id AND r.status = 'validated'::text), 0::numeric) AS validated_repayments,\n    ( SELECT max(e.created_at) AS max\n           FROM public.credit_collection_events e\n          WHERE e.obligation_id = o.id) AS last_collection_at,\n    ( SELECT count(*) AS count\n           FROM public.credit_collection_events e\n          WHERE e.obligation_id = o.id AND e.event_type = 'promise_broken'::text) AS broken_promises,\n        CASE\n            WHEN o.status = 'paid'::text THEN 'paid'::text\n            WHEN o.status = ANY (ARRAY['loss'::text, 'refinanced'::text]) THEN o.status\n            WHEN (EXISTS ( SELECT 1\n               FROM public.credit_collection_events e\n              WHERE e.obligation_id = o.id AND e.event_type = 'promise_broken'::text)) THEN 'promise_broken'::text\n            WHEN o.status = ANY (ARRAY['late'::text, 'delinquent'::text]) THEN o.status\n            ELSE 'current'::text\n        END AS credit_outcome\n   FROM public.credit_portfolio_obligations o\n     LEFT JOIN public.clientes c ON c.id = o.cliente_id\n     LEFT JOIN public.origenes origen ON origen.codigo = o.origen_codigo\n     LEFT JOIN public.nova_authorizations na ON na.id = o.nova_authorization_id;",
+    "search_path": ""
+  },
+  "functions": [
+    {
+      "md5": "ae58e5f4a241ae148b89f86d48a7ec51",
+      "signature": "cobra_quality_importer()",
+      "definition": "CREATE OR REPLACE FUNCTION public.cobra_quality_importer()\n RETURNS boolean\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n select public.cobra_quality_operator() and public.tiene_capacidad_aliados('revisor');\n$function$\n"
+    },
+    {
+      "md5": "62c421a981947be30b9d7e9fc3c060f4",
+      "signature": "creditos_cartera_puede_leer(text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.creditos_cartera_puede_leer(p_origen_codigo text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  select exists (\n    select 1 from public.perfiles p\n    where p.id = (select auth.uid()) and p.activo\n      and (p.rol in ('gerencia','auditoria') or p.tienda_codigo = p_origen_codigo)\n  );\n$function$\n"
+    },
+    {
+      "md5": "30233b4b90bed68ae5fce3f590e65b27",
+      "signature": "rol_actual()",
+      "definition": "CREATE OR REPLACE FUNCTION public.rol_actual()\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n select rol from public.perfiles where id=auth.uid() and activo;\n$function$\n"
+    },
+    {
+      "md5": "0baaeaffa5f5f7c697d8eb1b2af0f2ae",
+      "signature": "tiene_capacidad_aliados(text)",
+      "definition": "CREATE OR REPLACE FUNCTION public.tiene_capacidad_aliados(p_capacidad text DEFAULT 'revisor'::text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  select exists(select 1 from public.aliados_operadores o join public.perfiles p on p.id=o.perfil_id\n    where o.perfil_id=auth.uid() and o.activo and p.activo\n      and (o.capacidad=p_capacidad or o.capacidad='aprobador'));\n$function$\n"
+    }
+  ]
+}

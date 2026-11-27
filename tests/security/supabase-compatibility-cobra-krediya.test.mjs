@@ -13,7 +13,8 @@ const read=p=>readFileSync(p,'utf8');
 const sha=p=>createHash('sha256').update(readFileSync(p)).digest('hex');
 test('active COBRA assets and SQL equal the reviewed candidate',()=>{
  const root='releases/cobra-krediya-20261125',m=JSON.parse(read(root+'/integration/source-manifest.json'));
- for(const [p,v] of Object.entries(m.sources)){assert.equal(sha(root+'/'+p),v.sha256);assert.equal(sha(v.target),v.sha256);}
+ const latest=JSON.parse(read('releases/cartera-access-20261126/compatibility-session-role/active-assets.json'));
+ for(const [p,v] of Object.entries(m.sources)){assert.equal(sha(root+'/'+p),v.sha256);const replacement=latest[v.target];if(replacement){assert.equal(sha(replacement.source),replacement.sha256);assert.equal(sha(v.target),replacement.sha256);}else assert.equal(sha(v.target),v.sha256);}
  for(const name of ['20261126012515_cobra_krediya_cut_history.sql','20261126013403_cobra_krediya_collection_operation_link.sql'])assert.equal(sha('supabase/migrations/'+name),sha(root+'/supabase/migrations/'+name));
 });
 for(const scenario of ['upgrade','rebuild'])test('native '+scenario+' contract is pinned and rejects excessive permissions',()=>{
@@ -24,7 +25,7 @@ for(const scenario of ['upgrade','rebuild'])test('native '+scenario+' contract i
  assert.equal(receipt.fixture_sha256,sha('releases/cobra-krediya-20261125/db-tests/fixture.sql'));
  assert.equal(receipt.setup_sha256,sha(folder+'/setup.sql'));
  assert.equal(receipt.expected_catalog_sha256,sha(folder+'/expected-policy-triggers.json'));
- assert.equal(receipt.catalog_query_sha256,sha('scripts/supabase-compat/catalog-query.sql'));
+ assert.equal(receipt.catalog_query_sha256,sha('scripts/supabase-compat/catalog-query-v1.sql'));
  assert.equal(receipt.network,'none');assert.equal(receipt.production_operations,0);
  assert.equal(receipt.scenarios[scenario].checks.length,6);
  for(const [p,h] of Object.entries(release.migration_sha256)){assert.equal(sha(p),h);assert.equal(receipt.migration_sha256[p],h);}

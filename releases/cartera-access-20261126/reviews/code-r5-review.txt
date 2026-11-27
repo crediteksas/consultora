@@ -1,0 +1,74 @@
+# Cartera R5 Review: APPROVED PREPARATION
+
+**Scope.** This review covers only the R4 package plus the bounded R5 delta (source, fictional tests and runbook text). It is not a certification of production, the managed provider, provider catalogs, real HTTP/JWT/Storage/Realtime behavior or any real session. Activation remains a separate, reviewed step.
+
+**Hashes.** I cannot verify hashes from here. I reviewed the file contents supplied in this message and relied on your statement that every other R4 file is byte-identical.
+
+## R4 required fix 1: test the isolation branch. **Closed.**
+
+**The tests exercise the right branch.**
+- `storage.migrations` is in the reviewed inventory and is not one of the three overlays.
+- The inventory comparison therefore passes, and execution reaches the isolation predicate.
+- The fixture baseline has RLS enabled on `storage.migrations` and no policies, so each scenario introduces exactly one deviation.
+
+**Install abort (denied cases).**
+- In both `scope-core.sql` and `scope-full.sql`, the managed block runs right after the server-version check and before every other preflight check.
+- Matching `/cartera_managed_surface_not_isolated/` therefore proves the exception came from the isolation clause, not from an earlier check.
+- After `rollback`, the test asserts that neither `kora_cartera_operator` nor `public.cartera_subject()` exists. Since the script is a single transaction, this is sufficient evidence of atomicity.
+
+**Installed fixture (denied cases).**
+- In `cartera_assert_ready`, the overlay RLS loop and the coverage check do not touch `storage.migrations`. The first error raised is therefore the isolation error, through `assert_coverage → assert_managed`, and the precise regex is justified.
+- The test asserts `enabled=false` and an unchanged seal after the failed activation.
+- The integrated checker, imported from the target layout, reports exactly `Cartera managed surface not isolated: storage.migrations`.
+
+**Predicate semantics.**
+- `PUBLIC` is caught by `r=0`.
+- The `inherit true` grant gives MEMBER and USAGE, which trips the predicate.
+- The `inherit false` control gives MEMBER but not USAGE. Asserting both values explicitly is the right way to show the predicate follows `has_privs_of_role` rather than plain membership.
+- `disable row level security` is caught by `not c.relrowsecurity`.
+
+**Non-inherited control.**
+- **Before install:** the change is in place, install succeeds, `assert_ready` passes, the checker returns `ok` with no errors, and activation enables the contract. This shows no false positive.
+- **After install:** `assert_ready` passes, but activation fails with `cartera_activation_catalog_unreviewed`. The seal is unchanged and nothing reseals itself. This correctly keeps "isolated" separate from "reviewed".
+
+## R4 required fix 2: stale runbook wording. **Closed.**
+
+"Migraciones y publicaciones futuras" now states the rules correctly:
+- Every public table and the three overlays require the exact restrictive deny.
+- All other inventoried Storage/Realtime relations require RLS isolation, with no permissive policy applicable to `authenticated`.
+- Any additional relation aborts the install and fails the catalog gate.
+
+The two activation concerns are documented as blocking gates, not incidents:
+- Daily `realtime.messages_*` partition rotation, with no resealing to accept it.
+- Managed SECURITY DEFINER functions, which are outside the function fingerprint and are deferred to provider/API testing.
+
+## R4 optional points. **Addressed.**
+
+**Distinct gate errors.**
+- Removing a relation now yields "relation omitted", and it targets `storage.vector_indexes`.
+- Changing the deny on `public.abonos` yields "deny missing or changed".
+- Adding a publication yields "publication changes require".
+
+**Source pins.** `build-release-gate.py` checks the SHA-256 of both active pre-images before it reads them or regenerates anything. The pins live in a separately hashed JSON file.
+
+## Optional, non-blocking
+
+1. **Pins can be disabled by `python -O`.** The pin check uses `assert`, which Python strips under `-O` or `PYTHONOPTIMIZE`. Replacing it with an explicit `if …: raise SystemExit(...)` makes it unconditional. The same applies to the `count(needle)==1` asserts here and to the equivalent checks in `build-core.py`.
+2. **SET-only memberships are not checked.** The predicate ignores memberships with `inherit false, set true`. That is correct for RLS evaluation of an `authenticated` session. However, the R5 control uses `set false`, so the SET path is untested. Its only effect is via arbitrary SQL `SET ROLE`, which the API does not expose. A runbook sentence would cover it: role-claim and SET paths are part of the provider/JWT gate.
+3. **Tighter denied-case assertions.**
+   - In the installed checker check, `includes` could become exact equality with a one-element error array.
+   - The abort check could also assert that no `kora_cartera_policy` schema and no `cartera_dedicated_deny` policies remain. This is already implied by atomicity, so it is optional.
+4. **Views or foreign tables in future inventories.** Any `v/m/f` relation added to a future inventory will always fail isolation (`relkind not in ('r','p')`). That is intended fail-closed behavior. Saying so explicitly in the runbook would prevent a future inventory update from looking "accepted".
+
+## Unchanged status (not certified)
+
+- The SQL is staged only: contract disabled, authority empty, no account assignments, balances, payments, production SQL or publication.
+- All of the following remain mandatory gates before any activation:
+  - managed reconstruction and provider catalogs, including Realtime partition behavior;
+  - HTTP/JWT, Storage, Realtime, signed URLs and backends;
+  - upstream limits;
+  - ordinary-user sessions and Andrea's session;
+  - integration of the gate files at their target paths.
+- NOVA stays OFF and excluded.
+
+**Verdict: APPROVED PREPARATION** for the R4 package plus the R5 delta, as source preparation only.

@@ -1,0 +1,11 @@
+{
+  "input_sha256": "7f1651900a50c9facbf5e52d41b4870f6887a0d55f45a64d70dc1c5f5a28b244",
+  "base_r4_input_sha256": "6bcc88e779752177555de4de5956fce240535ee67148060840c3d1cf64d55aaa",
+  "runtime_behavior_unchanged": true,
+  "files": {
+    "PLAN.md": "207d0f32768233b810a0acb1cfdb8a7f891cfd48f6e91f105a66771900283363",
+    "auth-role-proof.py": "437f6cd6236e4501f3f6846133fcaaba1abd28f8177cf1582df6f75bb40b93f3",
+    "auth-role-proof-result.json": "44034a58d9bb7f6c6b2526cf4eeba3fe2318c4c471dec028bae39451f9097abc"
+  },
+  "scope": "Design/source and fictional tests only"
+}

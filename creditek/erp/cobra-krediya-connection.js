@@ -83,7 +83,7 @@
   const archiveKey=key=>key.replace('cobra-pending-v2:','cobra-discarded-v2:');
   function archive(key){
    try{const value=JSON.parse(storage.getItem(archiveKey(key))||'[]');
-    if(!Array.isArray(value)||value.some(x=>!x||Object.keys(x).sort().join(',')!=='discardedAt,id,kind'||(x.id!==null&&!uuid(x.id))||!['cut','collection'].includes(x.kind)||!Number.isSafeInteger(x.discardedAt)||x.discardedAt<0))return {entries:[],unknown:true};
+    if(!Array.isArray(value)||value.some(x=>!x||Object.keys(x).sort().join(',')!=='discardedAt,id,kind'||(x.id!==null&&!uuid(x.id))||!['cut','collection','fund-funding','fund-action'].includes(x.kind)||!Number.isSafeInteger(x.discardedAt)||x.discardedAt<0))return {entries:[],unknown:true};
     return {entries:value.filter(x=>x.discardedAt>=now()-ARCHIVE_TTL).map(x=>({...x,discardedAt:Math.min(x.discardedAt,now())})).slice(-ARCHIVE_LIMIT),unknown:false};
    }catch{return {entries:[],unknown:true};}
   }
@@ -178,7 +178,44 @@
     result.push(...batch);if(batch.length<100)return result.sort((a,b)=>b.created_at.localeCompare(a.created_at));last=batch.at(-1).id;
    }throw Error('Historial demasiado grande: requiere un alcance menor.');
   }
-  return Object.freeze({save,recover,discard,listCuts,loadCut,history,async capabilities(){const ctx=await context();const operator=await query(ctx,()=>client.rpc('cobra_quality_operator'));const importer=operator===true?await query(ctx,()=>client.rpc('cobra_quality_importer')):false;return {operator:operator===true,importer:importer===true};},dispose(){disposed=true;invalidate();uncertainIntents.clear();subscription.unsubscribe();}});
+  function stableJSON(v){if(v===null||typeof v!=='object')return JSON.stringify(v);if(Array.isArray(v))return '['+v.map(stableJSON).join(',')+']';return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stableJSON(v[k])).join(',')+'}';}
+
+  async function fundCapabilities(){const ctx=await context();await permission(ctx);return {authorizer:await query(ctx,()=>client.rpc('cobra_provision_authorizer'))===true};}
+  async function fundBook(){const ctx=await context();await permission(ctx);const book=await query(ctx,()=>client.rpc('cobra_provision_book'));if(!book||!Array.isArray(book.fundings)||!Array.isArray(book.actions)||book.fundings.length>10000||book.actions.length>10000||book.fundings.some(f=>!uuid(f.id))||book.actions.some(a=>!uuid(a.id)||!Number.isSafeInteger(a.event_no)||a.event_no<=0))throw Error('Libro de provisiones incompleto.');return book;}
+  async function fundSource(month){if(!/^\d{4}-(0[1-9]|1[0-2])-01$/.test(month))throw Error('Mes inválido.');const ctx=await context();await permission(ctx);const result=await query(ctx,()=>client.rpc('cobra_provision_source',{p_month:month}));
+   if(!result||!Number.isSafeInteger(result.count)||result.count<0||!Number.isSafeInteger(result.generated_cents)||!Number.isSafeInteger(result.negative_count)||result.negative_count<0||(result.count>0&&!/^[a-f0-9]{64}$/.test(result.digest)))throw Error('Fuente de provisión incompleta.');return result;}
+  async function customerHistory(operation){if(!uuid(operation))throw Error('Crédito inválido.');const ctx=await context();await permission(ctx);const result=await query(ctx,()=>client.rpc('cobra_krediya_history_cuts',{p_operation_id:operation}));if(result?.schema_version!==1||result.operation_id!==operation||result.automatic_decision!==false||result.official_quality!==false||!Array.isArray(result.cuts))throw Error('Historial no verificable.');return result;}
+  async function fundLookup(ctx,kind,id){const rows=await query(ctx,()=>client.from(kind==='funding'?'cobra_provision_fundings':'cobra_provision_actions').select('id,request_id,payload,created_by').eq('request_id',id).eq('created_by',ctx.user).limit(2));if(!Array.isArray(rows)||rows.length>1)throw Error('Solicitud ambigua.');const row=rows[0];if(row&&(!uuid(row.id)||row.request_id!==id||row.created_by!==ctx.user))throw Error('Respuesta de otro usuario.');return row||null;}
+  async function resolveFundRow(ctx,key,entry,row){const matches=await hash(stableJSON(row.payload))===entry.proof;assert(ctx);clearJournal(key);return {state:matches?'confirmed':'conflict',id:row.id};}
+  async function recoverFund(kind){if(!['funding','action'].includes(kind))throw Error('Solicitud inválida.');const ctx=await context();await permission(ctx);const key=await journalKey(ctx,'fund-'+kind);return exclusive(ctx,key,async()=>{let pending;try{pending=read(key,'fund-'+kind);}catch(error){if(error.code!=='COBRA_JOURNAL_INVALID')throw error;return unresolved(key,null,'invalid');}if(!pending)return {state:'none'};const row=await fundLookup(ctx,kind,pending.id);assert(ctx);if(!row)return unresolved(key,pending);return resolveFundRow(ctx,key,pending,row);});}
+  async function discardFund(kind,reviewToken,acknowledgeRisk){
+   if(!['funding','action'].includes(kind)||!/^[a-f0-9]{64}$/.test(reviewToken)||acknowledgeRisk!==true)throw Error('Revisa el libro y confirma el riesgo antes de liberar el aviso local.');
+   const ctx=await context();await permission(ctx);const key=await journalKey(ctx,'fund-'+kind);
+   return exclusive(ctx,key,async()=>{let entry;try{entry=read(key,'fund-'+kind);}catch(error){if(error.code!=='COBRA_JOURNAL_INVALID')throw error;}
+    if(entry===null)return {state:'none'};const review=await unresolved(key,entry,entry?'unconfirmed':'invalid');assert(ctx);
+    if(review.reviewToken!==reviewToken)throw Error('El pendiente cambió. Vuelve a comprobarlo.');if(!review.canDiscard)throw Error('Espera al menos un minuto y comprueba el pendiente otra vez.');
+    if(entry){const row=await fundLookup(ctx,kind,entry.id);if(row)return resolveFundRow(ctx,key,entry,row);}assert(ctx);
+    const retired=archive(key).entries;retired.push({id:entry?.id||null,kind:'fund-'+kind,discardedAt:now()});write(archiveKey(key),retired.slice(-ARCHIVE_LIMIT));clearJournal(key);return {state:'discarded',requestId:entry?.id};
+   });
+  }
+  async function saveFund(kind,request){let submitted=false;try{
+   if(!['funding','action'].includes(kind)||!uuid(request?.id)||!request.payload)throw Error('Solicitud inválida.');
+   const captured=JSON.parse(JSON.stringify(request)),ctx=await context();await permission(ctx);const key=await journalKey(ctx,'fund-'+kind),proof=await hash(stableJSON(captured.payload));let digest=await hash(stableJSON(captured));assert(ctx);
+   return await exclusive(ctx,key,async()=>{
+    const pending=read(key,'fund-'+kind),retired=archive(key),wasSent=!!pending||retired.unknown||uncertainIntents.has('fund-'+kind+':'+captured.id)||retired.entries.some(x=>x.id===captured.id);if(pending){const replayDigest=await hash(stableJSON({...captured,id:pending.id}));assert(ctx);if(pending.proof!==proof||pending.digest!==replayDigest)throw Error('Hay una solicitud pendiente. Comprueba su resultado antes de crear otra.');captured.id=pending.id;digest=replayDigest;}
+    const verify=async row=>{if(!row||await hash(stableJSON(row.payload))!==proof)throw Error('El recibo no coincide con esta solicitud.');assert(ctx);clearJournal(key);uncertainIntents.delete('fund-'+kind+':'+captured.id);return {id:row.id,saved:true,payment_executed:false};};
+    const found=await fundLookup(ctx,kind,captured.id);if(found)return verify(found);
+    write(key,{id:captured.id,digest,proof,sentAt:now()});uncertainIntents.add('fund-'+kind+':'+captured.id);submitted=true;
+    try{const receipt=await query(ctx,()=>client.rpc('cobra_provision_save',{p_request_id:captured.id,p_kind:kind,p_payload:captured.payload}));
+     if(!uuid(receipt?.id)||receipt.request_id!==captured.id||receipt.saved!==true||receipt.payment_executed!==false)throw Error('No se pudo verificar el recibo.');return await verify(receipt);
+    }catch(error){assert(ctx);const confirmed=await fundLookup(ctx,kind,captured.id);if(confirmed)return verify(confirmed);
+     if(!wasSent&&['P0001','23514','23502','23505','22P02','22003','42501'].includes(error.code)){clearJournal(key);uncertainIntents.delete('fund-'+kind+':'+captured.id);error.resetIntent=true;}
+     if(wasSent&&['P0001','23514','23502','23505','22P02','22003','42501'].includes(error.code))throw Error('El reintento fue rechazado, pero el primer envío sigue sin confirmar. Comprueba el libro y el pendiente.');
+     throw error;
+    }
+   });
+  }catch(error){if(!submitted)error.resetIntent=true;throw error;}}
+  return Object.freeze({save,recover,discard,listCuts,loadCut,history,fundCapabilities,fundBook,fundSource,customerHistory,recoverFund,discardFund,saveFund,async capabilities(){const ctx=await context();const operator=await query(ctx,()=>client.rpc('cobra_quality_operator'));const importer=operator===true?await query(ctx,()=>client.rpc('cobra_quality_importer')):false;return {operator:operator===true,importer:importer===true};},dispose(){disposed=true;invalidate();uncertainIntents.clear();subscription.unsubscribe();}});
  }
  const api={create,CUT_COLUMNS,EVENT_COLUMNS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.CobraQualityConnection=api;
 })(typeof window!=='undefined'?window:globalThis);

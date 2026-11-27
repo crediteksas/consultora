@@ -1,0 +1,1 @@
+"CHECK ((rol = ANY (ARRAY['gerencia'::text, 'auditoria'::text, 'admin_tienda'::text, 'asesor'::text])))"

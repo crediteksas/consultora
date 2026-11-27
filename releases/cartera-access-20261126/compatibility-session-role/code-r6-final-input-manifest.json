@@ -1,0 +1,106 @@
+{
+  "files": {
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-proof.mjs": {
+      "source_sha256": "845433e5e5ecc1991dd0a820c1f9a3d5fa7282d45fec26056ba45520692cf478",
+      "transmitted_sha256": "845433e5e5ecc1991dd0a820c1f9a3d5fa7282d45fec26056ba45520692cf478",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-lifecycle.mjs": {
+      "source_sha256": "15be1af8beee503e18eafdf5c5c1c3b9a55322b0842f1ad3d360b892bf639dee",
+      "transmitted_sha256": "15be1af8beee503e18eafdf5c5c1c3b9a55322b0842f1ad3d360b892bf639dee",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-lifecycle.test.mjs": {
+      "source_sha256": "00f4c599c5148b7d9349fcc8abdc00183f963803961e0c88ae358395a3f8a3dc",
+      "transmitted_sha256": "d5545e1670284de8f24d7017a1a23e09887875e46899c679fb7636e3af938ffa",
+      "redacted_literals": true
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/activation-template.sql.in": {
+      "source_sha256": "eaaf122076578e498a4ee29f2931ae12ae5b28ba5059d91d3419d9718ccc6f48",
+      "transmitted_sha256": "eaaf122076578e498a4ee29f2931ae12ae5b28ba5059d91d3419d9718ccc6f48",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/r6-debt.test.mjs": {
+      "source_sha256": "6e82d954ae90203be07fd85a30fcf77338dec378030a511d734c90fc3605bc99",
+      "transmitted_sha256": "6e82d954ae90203be07fd85a30fcf77338dec378030a511d734c90fc3605bc99",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/r6-fixture.mjs": {
+      "source_sha256": "16e14377a0ef365a181bc57bd39e18e4b6c7630e0da4498ba0c926fc7b099912",
+      "transmitted_sha256": "16e14377a0ef365a181bc57bd39e18e4b6c7630e0da4498ba0c926fc7b099912",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/native-r6-proof.py": {
+      "source_sha256": "eaed872fffbb1bacbce5e75631736fb6f7458782e224e34a1bfa6845fbb51938",
+      "transmitted_sha256": "5f267b34ef7796bf44fd9b2ea4d514357fc80ccc3469fdebf92f0718b3d37926",
+      "redacted_literals": true
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/build-r6-gate.py": {
+      "source_sha256": "1f453c93eb5d697a030eda03466cac431e3a92ee1029d0bdd5a268ff39b2acd0",
+      "transmitted_sha256": "1f453c93eb5d697a030eda03466cac431e3a92ee1029d0bdd5a268ff39b2acd0",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/cartera-coverage-gate.mjs": {
+      "source_sha256": "b9e81a64768fe4f5b0c1eee2b6dbb5a91142c26a0016eb2c73883e7dbf62b4ef",
+      "transmitted_sha256": "b9e81a64768fe4f5b0c1eee2b6dbb5a91142c26a0016eb2c73883e7dbf62b4ef",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/catalog-query.sql": {
+      "source_sha256": "a6d8ccc7c03ad60026f4d95bec148eaa9ac6b2fbc1c69eab1c4b2c349e47648d",
+      "transmitted_sha256": "a6d8ccc7c03ad60026f4d95bec148eaa9ac6b2fbc1c69eab1c4b2c349e47648d",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/kora-access-control.js": {
+      "source_sha256": "b17453a84f1addb712b94369e312acd0516af8a291dcad0b3113541b2828b213",
+      "transmitted_sha256": "ce876513476a9e1e9d4a1e18ec31ef6ef33cd4800fa83aae3bb06b288a055a0b",
+      "redacted_literals": true
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/candidate/creditos-cartera.html": {
+      "source_sha256": "46781e028a8c746bb0ffb8750d845a908fb39bb77c0de07fc7a7608b799ab8e5",
+      "transmitted_sha256": "46781e028a8c746bb0ffb8750d845a908fb39bb77c0de07fc7a7608b799ab8e5",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/compatibility-session-role/active-assets.json": {
+      "source_sha256": "fc1c917dbf132a1e6396b17da198a4353d3c736dab21dd1d374256a217581ea8",
+      "transmitted_sha256": "fc1c917dbf132a1e6396b17da198a4353d3c736dab21dd1d374256a217581ea8",
+      "redacted_literals": false
+    },
+    "tests/security/supabase-compatibility-cartera-access.test.mjs": {
+      "source_sha256": "e485230b08a66cbf19912fc41bc3413ece7acb018c43e6c66c325eeb906cfb87",
+      "transmitted_sha256": "e485230b08a66cbf19912fc41bc3413ece7acb018c43e6c66c325eeb906cfb87",
+      "redacted_literals": false
+    },
+    "tests/security/kora-shell-cache-version.test.mjs": {
+      "source_sha256": "f184b84a50866a5afe4e6abf4298c6d8a8ee00af6c3074ad1b8e7e45438f7bb2",
+      "transmitted_sha256": "f184b84a50866a5afe4e6abf4298c6d8a8ee00af6c3074ad1b8e7e45438f7bb2",
+      "redacted_literals": false
+    },
+    "tests/security/supabase-compatibility-source-batch.test.mjs": {
+      "source_sha256": "f13f65f9cd9d8afa946d9d54920f0047f67e01c63bc4a46131fd12d918545cff",
+      "transmitted_sha256": "f13f65f9cd9d8afa946d9d54920f0047f67e01c63bc4a46131fd12d918545cff",
+      "redacted_literals": false
+    },
+    "scripts/build-public.mjs": {
+      "source_sha256": "73f069698a81fbb86831358095ab00642855b114d12b7a7e84a4abb763c49d29",
+      "transmitted_sha256": "73f069698a81fbb86831358095ab00642855b114d12b7a7e84a4abb763c49d29",
+      "redacted_literals": false
+    },
+    "creditek/erp/creditos-cartera-domain.js": {
+      "source_sha256": "bccf91912a0383bea17c361a9a8c5cb91422589ba47bc1694c3dbf2e7e3b8683",
+      "transmitted_sha256": "bccf91912a0383bea17c361a9a8c5cb91422589ba47bc1694c3dbf2e7e3b8683",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/baseline/old-api-guard.sql": {
+      "source_sha256": "e05776964a9caf0d5991bc71cd90e9569f9dd3c0dbf4698931a52cc708c66a6b",
+      "transmitted_sha256": "e05776964a9caf0d5991bc71cd90e9569f9dd3c0dbf4698931a52cc708c66a6b",
+      "redacted_literals": false
+    },
+    "releases/cartera-access-20261126/baseline/old-debt-guard.sql": {
+      "source_sha256": "3ff0744f0c9f2e8ec9e31ab01405f699b2eecf4026eda8a1a630d3a0aae3e647",
+      "transmitted_sha256": "3ff0744f0c9f2e8ec9e31ab01405f699b2eecf4026eda8a1a630d3a0aae3e647",
+      "redacted_literals": false
+    }
+  },
+  "input_sha256": "e441644d2f3c472801ae4333d4612790ffd0e91286ab8455b2b41b27fda4fcd8",
+  "real_identity_literals_redacted": true
+}

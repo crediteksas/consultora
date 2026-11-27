@@ -1,0 +1,161 @@
+# Review: R6 dedicated Cartera session role (revision addressing R6-1 to R6-9)
+
+## Verdict: **CHANGES REQUIRED**
+
+This revision resolves most of the R6 findings and is close to approvable. The changes still required are small:
+
+- one design incoherence, in how "alcanzable" (reachable) is defined;
+- one incomplete grant specification, the RPC matrix;
+- fixture gaps where the design claims evidence the code does not produce, or where an R6-9 item was not addressed.
+
+None of these asks you to accept the authenticated/provider-control residual. The design correctly leaves that residual **not accepted** and blocking, and I request no change there.
+
+**Scope.** This review covers source and design only. It does not certify:
+
+- KORA integration;
+- the delta, which is not yet written;
+- hosted Supabase, or any PostgREST or GoTrue version other than the pinned digests;
+- the open gates: Storage, Realtime, GraphQL, the two backends, external limits, and the real surfaces for downgraded tokens.
+
+Those remain unimplemented prerequisites and the design labels them correctly as such. I do not treat them as defects.
+
+---
+
+## Status of R6-1 to R6-9
+
+| Item | Status |
+|---|---|
+| R6-1 C1′ precision | **Mostly resolved.** Per-object revocation, the inventory and hash, and the rule that a PUBLIC SECURITY DEFINER (SD) or side-effecting function blocks activation are all adopted. "Reachable" is not defined consistently, and the guard exception is not stated (CR-1). |
+| R6-2 pre-request as a global change | **Resolved at design level.** The change is acknowledged and the config location is named. The before/after role comparison is planned. The guard ACL now covers anon, authenticated and service_role. The SD form is tested, and `current_setting('role')` inside the definer was proven by the exact-message denials. A direct call is stated to be harmless. |
+| R6-3 allowlist precision | **Resolved at design level.** `IS DISTINCT FROM` is used and a missing GUC is denied. The schema is pinned, one overload per name is required, scalar `jsonb` is required with an OID check, and route-variant tests are planned. The variant tests are not in the fixture yet; that is acceptable as a delta prerequisite. |
+| R6-4 coverage and kill switch | **Partially resolved.** The kill switch is defined correctly, and the hosted coverage gate is stated. The local coverage assertions still accept 401, and the kill switch is untested (CR-3a, CR-3c). |
+| R6-5 continuous checks | **Resolved.** The contract is specified and disabled until review. The in-transaction DDL limit is stated honestly. The R5 policies are a precondition. The provider-table residual is explicitly not accepted and blocks activation. |
+| R6-6 RPC matrix | **Mostly resolved.** The service_role and executor columns are missing, and the Supabase default ACL grantees are not addressed (CR-2). |
+| R6-7 installer membership | **Decided at design level.** It is not evidenced: the fixture creates the role as a superuser, so the decided row cannot appear (CR-3b). |
+| R6-8 role settings | **Resolved.** 8s/2s were proven through the real API. The note that `SET ROLE` does not apply role settings is in the design. |
+| R6-9 fixture gaps | **Partially resolved.** Resolved: the second PostgREST instance, the PUBLIC SD bypass pair, refresh, password change, logout and revoked refresh, the admin read-back, the exact-message denials on raw routes, and the wording on the admin token. Still open: the PUBLIC-route assertions, the role and catalog assertions, and the email-change claim (CR-3, CR-4). |
+
+---
+
+## Changes required
+
+### CR-1. Define "alcanzable" in two tiers, and name the guard exception
+
+**The problem.** The design puts catalogs inside the reachable inventory ("esquemas alcanzables (incluidos public, extensions y catálogos)"). It also says any reachable function with NOTIFY or external effects blocks activation. But `pg_catalog` grants PUBLIC EXECUTE on several side-effecting functions:
+
+- `pg_notify`
+- `lo_create`, `lo_from_bytea`, `lo_put`
+- the advisory-lock functions
+- `set_config`
+- `pg_sleep`
+
+Read literally, activation can therefore never pass. The design also forbids the only fix, which is a global ACL change. In practice the rule would be quietly reinterpreted, which is worse than stating it precisely.
+
+**Fix: replace the single "reachable" notion with two defined tiers.**
+
+- **Tier H (HTTP-invocable):** every function in every schema exposed by any PostgREST or GraphQL configuration that can switch into the role, for every profile. The blocking rule for PUBLIC SD or side-effecting functions applies here without exception. The only exceptions are the four RPCs and the guard.
+- **Tier S (SQL-reachable only):** `pg_catalog`, `information_schema` and other schemas where the role has USAGE but no HTTP route exists. These are inventoried and hashed as a baseline. They are reachable only from the bodies of the allowed RPCs and the guard.
+  - Require an enumerated call graph of those bodies, from `pg_depend` plus a review of the body text.
+  - The call graph must contain no Tier-S side-effecting call beyond those reviewed.
+  - A change to that call graph blocks activation.
+
+**Guard exception.** The design says the guard "conserva exactamente su dueño/ACL de producción". If the production ACL includes PUBLIC, which is the built-in default, the guard is itself a PUBLIC SD function in `public` and trips the blocking rule. To fix this:
+
+- State the guard as the single enumerated exception, with its exact `proacl` recorded in the fingerprint.
+- State that "agrega solo el nuevo rol" is a no-op if PUBLIC is already present.
+
+### CR-2. Complete the RPC matrix against the Supabase default ACL
+
+**The problem.** In Supabase projects, `pg_default_acl` for `public` typically grants EXECUTE on new functions to anon, authenticated and service_role, in addition to the built-in PUBLIC default. Under that ACL, creating the four RPCs would give anon and authenticated EXECUTE even after `REVOKE ... FROM PUBLIC`. The matrix says "anon: no", but the delta text only mentions revoking PUBLIC.
+
+**Fix:**
+
+- Add **service_role** and **executor** columns to the matrix.
+- Require the delta to revoke from PUBLIC, anon, authenticated and service_role, then grant exactly the matrix.
+- Make the post-condition an exact `proacl` comparison, not `has_function_privilege` spot checks.
+- Replace "a cada rol probado que ya ejecutaba sus seis dependencias compartidas" for `cartera_subject()` with an enumerated role list. That list must state whether kora_cartera_session gets direct EXECUTE. It should not need it: an invoker function called from an executor-owned SD function runs with executor privileges.
+
+### CR-3. Close the fixture gaps the design already claims are covered
+
+**(a) Exact denials for the PUBLIC routes.** The design states "Las denegaciones con guardia comprueban código y mensaje exacto, no solo HTTP 401/403". The fixture still accepts `status in (401,403)` for POST /rpc/qa_public_leak, GET /rpc/qa_public_leak and GET /.
+
+- A 401 means the JWT was rejected, which is not guard evidence.
+- For POST and GET, assert 403 and `message=='qa_session_route_denied'`.
+- For HEAD, assert 403 plus the no-side-effect check. There is no body to inspect.
+- For GET /, assert the guard message. If root does not run the pre-request on v16.5, record that as a finding under the API-root gate. Do not accept it through a 401.
+
+**(b) Role and catalog assertions (R6-7, R6-9).** The fixture creates the role as `supabase_admin`, a superuser. Under PG16+ a superuser creator gets no automatic creator grant, so the decided installer row cannot exist in this fixture. To fix this:
+
+- Create the role through a non-superuser CREATEROLE installer, as hosted `postgres` would. Assert `createrole_self_grant = ''` beforehand.
+- Assert the exact `pg_auth_members` rows in both directions, with `admin_option`, `inherit_option`, `set_option` and the grantor:
+  - authenticator gets SET TRUE, INHERIT FALSE, ADMIN FALSE;
+  - the installer gets ADMIN TRUE, INHERIT FALSE, SET FALSE, with grantor OID 10;
+  - no other rows exist.
+- Record the outcome of the creator attempting to revoke the bootstrap grant. The design asserts this fails; record it, whichever way it goes.
+- Assert all role attributes.
+- Assert `server_version_num >= 160000`.
+- Assert `pg_db_role_setting` for the role.
+- Run the C1′ inventory query itself. It must flag `qa_public_leak` as a blocking Tier-H SD function, and `qa_subject` as a PUBLIC invoker. That is the negative test showing the gate works.
+
+**(c) Kill switch.** The continuous-monitor contract depends on this, but it is untested. The fixture can test it locally, since nothing real is touched. Run `REVOKE kora_cartera_session FROM authenticator GRANTED BY <verified grantor>`, then assert:
+
+- the dedicated token on `/rpc/qa_bootstrap` fails with the specific error;
+- no fallback to authenticated or anon occurs;
+- the ordinary user is unaffected.
+
+**(d) Schema-cache reload.** Run `NOTIFY pgrst, 'reload schema'`, then repeat one guard denial and the bootstrap success. This is local evidence for R6-4. The hosted gate stays open regardless.
+
+### CR-4. Correct the email-change claim
+
+**The problem.** The design says "cambio de email confirmado sin correo". The fixture exercises the **admin** path, `PUT /admin/users/{id}` with `email_confirm`, which is a different code path from user-initiated email change.
+
+**Fix:** do one of the following.
+
+- Reword the design to "cambio de email por administrador".
+- Add the self-service flow fully locally: `PUT /user {email}`, read the fictional change token from `auth.users` in the fixture DB, call `/verify`, then re-login and do the admin read-back.
+
+---
+
+## Non-blocking notes
+
+- **Guard cast:** `current_setting('request.jwt.claims',true)::jsonb` runs for every role. On a pooled connection where the GUC reverts to `''`, the cast raises an error for anon and authenticated too.
+  - In the real guard, do the cast inside the session branch with `nullif(...,'')`.
+  - The planned before/after comparison should catch this, but should not be relied on alone.
+- **Profile pin:** consider checking the effective resolved schema, meaning the `search_path` PostgREST sets, rather than only the raw headers. An absent header must still resolve to `public`.
+- **Pre-request value:** verify that `pgrst.db_pre_request` is schema-qualified. An unqualified value under a non-public profile would fail closed for everyone, causing an outage rather than a bypass.
+- **Service connections:** the claim "conexiones de servicio no reciben membresía" holds only for services that do not log in *as* authenticator.
+  - The open Storage/Realtime gate should enumerate every service whose DB login is authenticator or any member of the role. Those services never run the PostgREST pre-request, and only the privilege layer protects them.
+  - I do not certify which hosted services those are.
+- **Transaction marker:** the rationale ("no se trata como secreto") misreads the suggestion. The client cannot set GUCs, so a marker would detect a missing guard. It stays optional.
+- **Provenance:** `test_source_sha256` in the result is not produced by the shown script, so it cannot be tied to this source. Compute it in-script from the script's own file.
+- **Assertion count:** of the 45 assertions, 6 are repeated "password sign-in succeeds", so there are about 37 distinct properties. Report it that way to avoid overstating coverage.
+- **Fixture hygiene:**
+  - `qa_subject()` keeps PUBLIC EXECUTE, which contradicts the delta rule. Acceptable only as a fixture.
+  - `qa_bootstrap` is defined twice.
+  - `freeport` and the port arguments are still unused.
+- **Optional tests:**
+  - a dedicated token against GoTrue `/admin/*` is rejected;
+  - one anon request passes through the guard;
+  - a pre-change refresh token is shown to be revoked by the transition procedure. The current refresh test uses a post-change session.
+- **Role settings:** PostgREST reads impersonated-role settings at config or schema-cache load. The monitor should treat a changed `pg_db_role_setting` as requiring a reload plus a re-check.
+- **Practical gate:** the existing `public` schema may well contain PUBLIC-executable SD functions, possibly including the current pre-request and RLS helpers. Under CR-1 each of those blocks activation until a separately approved per-object change. That is coherent, but it should be expected.
+
+---
+
+## Not approved
+
+As before, this review does not approve:
+
+- installation or deployment;
+- any real account selection, role assignment, sign-out or ban;
+- service-role key use;
+- Auth configuration;
+- any change to the pre-request body or to authenticator settings;
+- execution of the kill switch outside the fixture;
+- any provider-owned ACL or policy;
+- Storage, Realtime or GraphQL behavior;
+- the two backends;
+- external limits;
+- acceptance of the downgraded-token/provider-control residual.
+
+Once CR-1 to CR-4 are reflected in the design and the fixture, the remaining scope (isolated source and fictional tests) would be eligible for **APPROVED DESIGN PREPARATION**, with all listed gates still open and blocking.

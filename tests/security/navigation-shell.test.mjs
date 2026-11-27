@@ -123,6 +123,7 @@ function createHarness({
   }
 
   const client = {
+    rpc(name){events.push('rpc:'+name);return Promise.resolve({data:name==='cartera_operador_inicio'?{restricted:false}:false,error:null});},
     auth: {
       getSession: sessionHangs
         ? () => new Promise(() => {})

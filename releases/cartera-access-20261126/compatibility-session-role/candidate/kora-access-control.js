@@ -1,0 +1,229 @@
+(function (global) {
+  'use strict';
+
+  const CORPORATE_ROLES = new Set(['gerencia', 'auditoria']);
+  const STORE_ROLES = new Set(['admin_tienda', 'asesor']);
+  const FINANCIAL_CONTROLLERS = new Set([
+    'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
+    '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
+  ]);
+  const DOCUMENT_MANAGERS = new Set([
+    'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
+    '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
+  ]);
+  const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html', 'pyg.html']);
+  const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
+  const B2B_ROUTES = new Set([
+    'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
+    'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html', 'cartera-b2b.html',
+    'utilidad-creditek.html', 'resumen-saldos-b2b.html', 'facturas-emitidas-b2b.html',
+  ]);
+  const ALLIES_ROUTES = new Set([
+    'aliados-dashboard.html', 'aliados.html', 'aliados-ejecutivos.html',
+    'aliados-plataformas.html', 'aliados-presupuesto.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
+    'aliados-bonificaciones.html', 'aliados-gastos.html', 'aliados-reportes.html', 'aliados-tesoreria.html',
+  ]);
+  const CREDIT_PORTFOLIO_ROUTES = new Set(['creditos-cartera.html']);
+  const CORPORATE_ROUTES = new Set([
+    'confirmaciones-deuda.html', 'tablero.html', 'presupuestos.html', 'ventas.html', 'registro-interno.html',
+    'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
+    'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
+    'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
+    'incidencias.html', 'compartir-instalacion.html', 'documentos-gestion.html', 'ajustes-gerencia.html', 'banco-creditek.html', 'exogena.html', 'pyg.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
+    ...CREDIT_PORTFOLIO_ROUTES, ...FINANCIAL_CONTROLLER_ROUTES,
+  ]);
+  const STORE_ROUTES_BY_ROLE = Object.freeze({
+    admin_tienda: new Set([
+      'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
+      'inventario.html', 'catalogo.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
+      'documento-remision.html', 'traslados.html', 'pedidos-b2b.html', 'incidencias.html', 'creditos-cartera.html',
+    ]),
+    asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html', 'pedidos-b2b.html', 'creditos-cartera.html']),
+  });
+
+  const CORPORATE_NAVIGATION = Object.freeze([
+    { title: 'TABLERO', icon: 'layout-dashboard', items: [
+      { label: 'Resumen ejecutivo', href: 'tablero.html', icon: 'gauge' },
+    ] },
+    { title: 'CREDITEK RETAIL', icon: 'store', items: [
+      { label: 'Dashboard Retail', href: 'reportes.html#retail', icon: 'chart-no-axes-combined' },
+      { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart' },
+      { label: 'Clientes', href: 'registro-interno.html', icon: 'users' },
+      { label: 'Caja', href: 'caja.html', icon: 'wallet-cards' },
+      { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2' },
+      { label: 'Inventario Retail', href: 'inventario.html', icon: 'package' },
+      { label: 'Traslados', href: 'traslados.html', icon: 'arrow-left-right' },
+      { label: 'Gastos', href: 'gastos.html', icon: 'receipt' },
+      { label: 'Gastos periódicos', href: 'finanzas-programadas.html?vista=retail', icon: 'calendar-clock', users: [...FINANCIAL_CONTROLLERS] },
+      { label: 'Cartera Retail', href: 'cuenta-corriente.html#retail', icon: 'book-open-check' },
+      { label: 'Reportes Retail', href: 'reportes.html', icon: 'file-chart-column-increasing' },
+    ] },
+    { title: 'CRÉDITOS Y CARTERA', icon: 'badge-dollar-sign', items: [
+      { label: 'Cartera de créditos', href: 'creditos-cartera.html', icon: 'book-open-check' },
+    ] },
+    { title: 'CREDITEK B2B', icon: 'warehouse', capability: 'b2b', items: [
+      { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', icon: 'layout-dashboard' },
+      { label: 'Resumen de saldos B2B', href: 'resumen-saldos-b2b.html', icon: 'scale' },
+      { label: 'Pedidos y abastecimiento', href: 'pedidos-b2b.html', icon: 'shopping-bag' },
+      { label: 'Compras', href: 'compra-proveedor.html', icon: 'package-plus' },
+      { label: 'Proveedores y cartera', href: 'proveedores.html', icon: 'hand-coins' },
+      { label: 'Inventario Central', href: 'bodega-central.html', icon: 'warehouse' },
+      { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output' },
+      { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', icon: 'book-open-check' },
+      { label: 'Facturas emitidas', href: 'facturas-emitidas-b2b.html', icon: 'receipt-text' },
+      { label: 'Consignaciones', href: 'cuenta-corriente.html#consignaciones', icon: 'landmark' },
+    ] },
+    { title: 'CREDITEK ALIADOS', icon: 'handshake', capability: 'aliados', items: [
+      { label: 'Dashboard Aliados', href: 'aliados-dashboard.html', icon: 'layout-dashboard' },
+      { label: 'Aliados', href: 'aliados.html', icon: 'handshake' },
+      { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round' },
+      { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left' },
+      { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet' },
+      { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },
+      { label: 'Bonificaciones', href: 'aliados-bonificaciones.html', icon: 'badge-dollar-sign' },
+      { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
+    ] },
+    { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Tesorería', href: 'aliados-tesoreria.html', icon: 'landmark', capability: 'aliados' },
+      { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', icon: 'clipboard-check', roles: ['gerencia', 'auditoria'] },
+      { label: 'Presupuestos', href: 'presupuestos.html', icon: 'target', roles: ['gerencia', 'auditoria'] },
+      { label: 'Banco Creditek', href: 'banco-creditek.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
+      { label: 'PYG por negocio', href: 'pyg.html', icon: 'chart-no-axes-combined', roles: ['gerencia', 'auditoria'], users: [...FINANCIAL_CONTROLLERS] },
+      { label: 'Información exógena e informes', href: 'exogena.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
+      { label: 'Editar o anular documentos', href: 'documentos-gestion.html', icon: 'file-pen-line', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
+      { label: 'Ajustes de Gerencia', href: 'ajustes-gerencia.html', icon: 'scale', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
+      { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', icon: 'hand-coins', users: [...FINANCIAL_CONTROLLERS] },
+      { label: 'Compartir instalación', href: 'compartir-instalacion.html', icon: 'share-2', roles: ['gerencia', 'auditoria'] },
+      { label: 'Centro de Incidencias', href: 'incidencias.html', icon: 'bug', roles: ['gerencia'] },
+      { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['auditoria'] },
+      { label: 'Ver incidencias', href: 'incidencias.html#ver', icon: 'bug', roles: ['auditoria'] },
+    ] },
+  ]);
+
+  // Orden visual de las unidades principales. No modifica rutas, permisos ni
+  // capacidades: únicamente prioriza los tres negocios en la navegación.
+  const CORPORATE_NAVIGATION_ORDER = Object.freeze({
+    'CREDITEK RETAIL': 0,
+    'CREDITEK B2B': 1,
+    'CREDITEK ALIADOS': 2,
+    'TABLERO': 3,
+    'CRÉDITOS Y CARTERA': 4,
+    'ADMINISTRACIÓN': 5,
+  });
+
+  const STORE_NAVIGATION = Object.freeze([
+    { title: 'MI TIENDA', icon: 'store', items: [
+      { label: 'Resumen de mi tienda', href: 'reportes.html', icon: 'gauge', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Clientes', href: 'registro-interno.html', icon: 'users', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Créditos y cartera', href: 'creditos-cartera.html', icon: 'book-open-check', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
+      { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2', roles: ['admin_tienda'] },
+      { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Pedidos a Creditek', href: 'pedidos-b2b.html', icon: 'shopping-bag', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output', roles: ['admin_tienda'] },
+      { label: 'Traslados', href: 'traslados.html', icon: 'arrow-left-right', roles: ['admin_tienda'] },
+      { label: 'Gastos', href: 'gastos.html', icon: 'receipt', roles: ['admin_tienda'] },
+      { label: 'Cartera', href: 'cuenta-corriente.html', icon: 'book-open-check', roles: ['admin_tienda'] },
+      { label: 'Reportes', href: 'reportes.html#reportes', icon: 'file-chart-column-increasing', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['admin_tienda'] },
+      { label: 'Mis incidencias', href: 'incidencias.html#ver', icon: 'bug', roles: ['admin_tienda'] },
+    ] },
+  ]);
+
+  function normalizeRoute(value) {
+    const raw = String(value || '').split('#')[0].split('?')[0];
+    const last = raw.split('/').filter(Boolean).pop() || 'app';
+    // El hosting sirve app.html también desde /creditek/erp y /creditek/erp/.
+    // Sin esta equivalencia, un acceso guardado con la URL de la carpeta se
+    // interpretaba como "erp.html" y bloqueaba incluso a perfiles activos.
+    if (last === 'erp') return 'app.html';
+    return last.includes('.') ? last : `${last}.html`;
+  }
+
+  function resolveExperience(profile) {
+    if (!profile?.activo) return null;
+    if (profile.rol === 'operador_cartera') return 'portfolio';
+    if (CORPORATE_ROLES.has(profile.rol)) return 'corporate';
+    if (STORE_ROLES.has(profile.rol) && profile.tienda_codigo) return 'store';
+    return null;
+  }
+
+  function homeFor(profile) {
+    const experience = resolveExperience(profile);
+    if (experience === 'portfolio') return 'creditos-cartera.html';
+    if (experience === 'corporate') return 'tablero.html';
+    if (experience === 'store') return 'reportes.html';
+    return null;
+  }
+
+  function canManageDocuments(profile) {
+    return Boolean(profile?.activo === true
+      && CORPORATE_ROLES.has(profile.rol)
+      && DOCUMENT_MANAGERS.has(profile.id));
+  }
+
+  function authorize(profile, route, capabilities = {}) {
+    const normalized = normalizeRoute(route);
+    if (PUBLIC_ROUTES.has(normalized)) return { allowed: true, route: normalized, experience: resolveExperience(profile) };
+    const experience = resolveExperience(profile);
+    if (!experience) return { allowed: false, route: normalized, experience: null };
+    if (experience === 'portfolio') return { allowed: capabilities.cartera === true && CREDIT_PORTFOLIO_ROUTES.has(normalized), route: normalized, experience };
+    if (experience === 'store') {
+      return { allowed: STORE_ROUTES_BY_ROLE[profile.rol].has(normalized), route: normalized, experience };
+    }
+    const hasFullCorporateAccess = profile.rol === 'gerencia';
+    const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';
+    if (!CORPORATE_ROUTES.has(normalized)) return { allowed: false, route: normalized, experience };
+    if ((normalized === 'documentos-gestion.html' || normalized === 'ajustes-gerencia.html' || normalized === 'banco-creditek.html' || normalized === 'exogena.html') && !canManageDocuments(profile)) {
+      return { allowed: false, route: normalized, experience };
+    }
+    if (FINANCIAL_CONTROLLER_ROUTES.has(normalized) && !FINANCIAL_CONTROLLERS.has(profile.id)) {
+      return { allowed: false, route: normalized, experience };
+    }
+    if (!hasB2BReadAccess && B2B_ROUTES.has(normalized) && capabilities.b2b !== true) return { allowed: false, route: normalized, experience };
+    if (!hasFullCorporateAccess && ALLIES_ROUTES.has(normalized) && capabilities.aliados !== true) return { allowed: false, route: normalized, experience };
+    return { allowed: true, route: normalized, experience };
+  }
+
+  function navigationFor(profile, capabilities = {}) {
+    const experience = resolveExperience(profile);
+    if (experience === 'portfolio') return capabilities.cartera === true ? [{title:'CRÉDITOS Y CARTERA',icon:'badge-dollar-sign',items:[{label:'Créditos y cartera',href:'creditos-cartera.html',icon:'book-open-check'}]}] : [];
+    if (experience === 'corporate') {
+      const hasFullCorporateAccess = profile.rol === 'gerencia';
+      const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';
+      return CORPORATE_NAVIGATION
+        .filter(section => section.capability === 'b2b'
+          ? hasB2BReadAccess || capabilities.b2b === true
+          : hasFullCorporateAccess || !section.capability || capabilities[section.capability] === true)
+        .sort((left, right) =>
+          (CORPORATE_NAVIGATION_ORDER[left.title] ?? 99)
+          - (CORPORATE_NAVIGATION_ORDER[right.title] ?? 99))
+        .map(section => ({
+          ...section,
+          items: section.items
+            .filter(item => (!item.capability || hasFullCorporateAccess || capabilities[item.capability] === true)
+              && (!item.roles || item.roles.includes(profile.rol))
+              && (!item.users || item.users.includes(profile.id)))
+            .map(item => ({ ...item })),
+        }))
+        .filter(section => section.items.length > 0);
+    }
+    if (experience === 'store') {
+      return STORE_NAVIGATION.map(section => ({
+        ...section,
+        items: section.items.filter(item => item.roles.includes(profile.rol)).map(item => ({ ...item })),
+      }));
+    }
+    return [];
+  }
+
+  global.KoraAccessControl = Object.freeze({
+    authorize,
+    canManageDocuments,
+    homeFor,
+    navigationFor,
+    normalizeRoute,
+    resolveExperience,
+  });
+})(window);

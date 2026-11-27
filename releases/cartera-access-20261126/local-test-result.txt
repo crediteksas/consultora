@@ -1,0 +1,47 @@
+✔ bootstrap permits legacy fallback only on explicit false; rejects malformed, other-user and inactive responses (0.853333ms)
+✔ committed denial envelopes become explicit client errors and malformed ones never become empty data (0.676833ms)
+✔ scoped adapter only forwards fixed RPC datasets and pins query token and abort signal (0.3015ms)
+✔ unknown tables, columns, joins, filters and financial RPCs never fall back to raw client (0.282ms)
+✔ candidate connection plus restricted adapter plus native SQL completes follow-up and request recovery (2102.316709ms)
+✔ installation stays disabled, keeps ordinary access and denies dedicated raw surfaces (1524.8905ms)
+✔ bounded bootstrap responds only for active own profile/capability; privilege drift fails closed (755.399791ms)
+✔ known principal cannot escape by role edit, id change or deleted profile with old session (650.218833ms)
+✔ pre-request narrows dedicated HTTP SQL routes and preserves existing debt denial (642.766083ms)
+✔ full reviewed candidate contains byte-identical core preflight, debt guard and rate controls (0.698666ms)
+✔ role CHECK drift aborts atomically and a late BEFORE trigger cannot evade principal recording (1147.619458ms)
+✔ completed invalid calls consume budget; exhausted actor does not reach expensive contract check (641.578416ms)
+✔ membership or default-ACL drift fails closed and private schema usage is not granted to ordinary roles (636.10525ms)
+✔ rate cap commits rejected-call counts and technical role cannot acquire broader privileges (604.835875ms)
+✔ unreviewed relation preflight aborts without a partial role or policy (520.009417ms)
+✔ bound invoker identity returns only caller UUID without USAGE on managed identity schema (537.250625ms)
+✔ provider removing UID execution prevents install atomically without changing managed grants (497.283208ms)
+✔ fixed read datasets preserve classic origin scope and never expose raw/source fields (1969.126167ms)
+✔ read-only dedicated account cannot prepare actions; failed datasets consume committed budget (847.827458ms)
+✔ identity callsites keep all original owners/ACLs/security modes and ordinary corporate flow (676.75825ms)
+✔ follow-up is idempotent and cannot create a payment or target a credit without a cut (828.661958ms)
+✔ provision prepares once; authorization, funding, release and execution are denied (910.329916ms)
+✔ core non-superuser installer assigns all function ownership without identity-schema grant option (1579.064958ms)
+✔ full non-superuser installer assigns all function ownership without identity-schema grant option (853.56425ms)
+✔ activation uses reviewed install seal and rechecks coverage instead of accepting drift (1543.734375ms)
+✔ changed policy expression or RLS prevents activation even with a matching freshly computed parameter (1338.116041ms)
+✔ full trust pins reject changed dependencies and the native PUBLIC alias works for anon and backend callers (1325.262167ms)
+✔ mandatory catalog gate rejects omitted relations, changed denies and later publications (701.822083ms)
+✔ classic origin scope coexists with consistent Aliados-wide KrediYA management for two origins (1171.163792ms)
+✔ a fourth managed storage relation blocks installation, activation and the integrated gate (1123.481209ms)
+✔ inventoried managed relation: PUBLIC permissive policy (2175.10575ms)
+✔ inventoried managed relation: inherited permissive policy (1279.2505ms)
+✔ inventoried managed relation: non-inherited membership control (1392.828625ms)
+✔ inventoried managed relation: RLS disabled (1222.093ms)
+✔ ordinary store follows old profile path only after explicit bootstrap=false and mounts debt confirmation (3.857417ms)
+✔ dedicated operator enters portfolio without raw profile/capability/store calls (1.567333ms)
+✔ bootstrap validator in shell is exactly the reviewed client validator (0.161292ms)
+✔ failed, non-JSON or invalid bootstrap cannot fall back to legacy tables or reveal content (1.887792ms)
+✔ dedicated operator cannot open sales and app landing redirects to portfolio without other data (0.954916ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8238.193667

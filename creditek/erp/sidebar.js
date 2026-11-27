@@ -279,11 +279,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', lucide: 'layout-dashboard', description: 'Consulta facturación, costos y utilidad B2B en un solo resumen.', roles: ['gerencia', 'auditoria'] },
       { label: 'Resumen de saldos B2B', href: 'resumen-saldos-b2b.html', lucide: 'scale', description: 'Consulta cuánto deben las tiendas y clientes, cuánto se debe a proveedores y la diferencia entre ambas carteras.', roles: ['gerencia', 'auditoria'] },
     ]},
-    { titulo: 'CRÉDITOS Y CARTERA', icono: '💳', lucide: 'badge-dollar-sign', description: 'Autorizaciones Nova, pagos del cliente y gestión operativa de Cobra.', items: [
-      { label: 'Cartera de créditos', href: 'creditos-cartera.html', lucide: 'book-open-check', description: 'Consulta créditos, pagos, mora y resultados para retroalimentar a Nova.', roles: ['gerencia','auditoria','admin_tienda','asesor'] },
-    ]},
-    { titulo: 'CREDITEK ALIADOS', aliados: true, icono: '🤝', lucide: 'handshake', description: 'Importa, revisa y aprueba liquidaciones de plataformas para aliados.', items: [
-      { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', lucide: 'file-spreadsheet', description: 'Gestiona liquidaciones PayJoy y ALO, novedades, pagos y auditoría.', roles: ['gerencia', 'auditoria'] },
+    { titulo: 'CREDITEK ALIADOS', icono: '🤝', lucide: 'handshake', description: 'Créditos, cartera y operaciones autorizadas de Aliados.', items: [
+      { label: 'Créditos y cartera', href: 'creditos-cartera.html', lucide: 'book-open-check', description: 'Consulta créditos, pagos, mora y resultados para retroalimentar a Nova.', roles: ['gerencia','auditoria','admin_tienda','asesor','operador_cartera'] },
+      { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', lucide: 'file-spreadsheet', description: 'Gestiona liquidaciones PayJoy y ALO, novedades, pagos y auditoría.', roles: ['gerencia', 'auditoria'], aliados: true },
     ]},
     { titulo: 'CLIENTES', icono: '👤', lucide: 'users', description: 'Registro y validación segura de clientes de Creditek.', items: [
       { label: 'Registrar cliente', href: 'registro-interno.html', lucide: 'user-plus', description: 'Crea un cliente desde KORA con validaciones y trazabilidad interna.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
@@ -308,7 +306,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   ];
 
   const LOGO = '/creditek/shared/branding/creditek-logo.png';
-  const ROL_LABEL = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' };
+  const ROL_LABEL = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor', operador_cartera: 'Gestión de cartera' };
   const KORA_LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';
   if (KORA_SHELL_ENABLED) installKoraAssets();
   const KORA_PORTAL_MODULES = [
@@ -492,7 +490,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     const rolLabel = ROL_LABEL[perfil.rol] || perfil.rol;
 
     const modulosHtml = MODULOS.filter(mod => (!mod.b2b || puedeVerB2B) && (!mod.aliados || perfil.es_operador_aliados)).map(mod => {
-      const items = mod.items.filter(it => it.roles.includes(perfil.rol) && (!it.users || it.users.includes(perfil.id)));
+      const items = mod.items.filter(it => it.roles.includes(perfil.rol) && (!it.users || it.users.includes(perfil.id)) && (!it.aliados || perfil.es_operador_aliados) && (perfil.rol !== 'operador_cartera' || perfil.es_operador_cartera === true));
       if (!items.length) return '';
       const abierto = items.some(it => it.href === activa);
       return `
@@ -516,7 +514,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
             ${tiendas.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('')}
           </select>
         </div>`
-      : `<div class="tienda-texto">${escapeHtml(nombreTienda(perfil.tienda_codigo, tiendas))}</div>`;
+      : `<div class="tienda-texto">${perfil.rol === 'operador_cartera' ? escapeHtml(perfil.tienda_codigo ? 'Origen: '+perfil.tienda_codigo : 'Sin origen clásico asignado') : escapeHtml(nombreTienda(perfil.tienda_codigo, tiendas))}</div>`;
 
     return `
       <button class="sidebar-hamburguesa" id="sidebarHamburguesa" aria-label="Abrir menú">☰</button>
@@ -672,6 +670,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     const capabilities = {
       b2b: profile.rol === 'gerencia' || profile.rol === 'auditoria' || profile.es_admin_b2b === true,
       aliados: profile.es_operador_aliados === true,
+      cartera: profile.es_operador_cartera === true,
     };
     return (window.KoraAccessControl?.navigationFor(profile, capabilities) || []).map(section => ({
       titulo: section.title,
@@ -689,7 +688,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function koraNavigationHtml(modules, role, activeItem, profile) {
     const puedeVerB2B = profile.rol === 'gerencia' || profile.rol === 'auditoria' || profile.es_admin_b2b === true;
     return modules.filter(module => (!module.b2b || puedeVerB2B) && (!module.aliados || profile.es_operador_aliados)).map(module => {
-      const items = module.items.filter(item => (!item.roles || item.roles.includes(role)) && (!item.users || item.users.includes(profile.id)));
+      const items = module.items.filter(item => (!item.roles || item.roles.includes(role)) && (!item.users || item.users.includes(profile.id)) && (!item.aliados || profile.es_operador_aliados) && (profile.rol !== 'operador_cartera' || profile.es_operador_cartera === true));
       if (!items.length) return '';
       const isActive = item => item === activeItem
         || (item.href && item.href === activeItem?.href)
@@ -730,6 +729,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   }
 
   function koraStoreHtml(profile, stores) {
+    if (profile.rol === 'operador_cartera') return '<span class="kora-extension">'+escapeHtml(profile.tienda_codigo ? 'Origen: '+profile.tienda_codigo : 'Sin origen clásico asignado')+'</span>';
     const central = profile.rol === 'gerencia' || profile.rol === 'auditoria';
     if (!central) {
       return `<span class="kora-extension" data-kora-retail-store><i data-lucide="store"></i><span>${escapeHtml(nombreTienda(profile.tienda_codigo, stores))}</span></span>`;
@@ -1055,7 +1055,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
     window.lucide?.createIcons();
     requestAnimationFrame(() => root.dataset.koraStable = 'true');
-    const mountIncidentCenter = () => window.KoraIncidentCenter?.mount?.({
+    const restrictedPortfolio = profile.rol === 'operador_cartera';
+    if (restrictedPortfolio) {
+      main.querySelector('[data-kora-notifications]')?.setAttribute('hidden','');
+      main.querySelector('[data-kora-export]')?.setAttribute('hidden','');
+    }
+    const mountIncidentCenter = () => !restrictedPortfolio && window.KoraIncidentCenter?.mount?.({
       sb: supabaseClient,
       profile,
       stores,
@@ -1065,7 +1070,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!window.KoraIncidentCenter) {
       document.addEventListener('kora-incident-ready', mountIncidentCenter, { once: true });
     }
-    const mountNotifications = () => window.KoraNotifications?.mount?.({
+    const mountNotifications = () => !restrictedPortfolio && window.KoraNotifications?.mount?.({
       sb: supabaseClient,
       profile,
     });
@@ -1073,7 +1078,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!window.KoraNotifications) {
       document.addEventListener('kora-notifications-ready', mountNotifications, { once: true });
     }
-    const mountContextHelp = () => window.KoraContextHelp?.mount?.({
+    const mountContextHelp = () => !restrictedPortfolio && window.KoraContextHelp?.mount?.({
       button: main.querySelector('[data-kora-help]'),
       profile,
       title: current?.label,
@@ -1083,7 +1088,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!window.KoraContextHelp) {
       document.addEventListener('kora-context-help-ready', mountContextHelp, { once: true });
     }
-    const mountReportExport = () => window.KoraReportExport?.mount?.({ profile, sb: supabaseClient });
+    const mountReportExport = () => !restrictedPortfolio && window.KoraReportExport?.mount?.({ profile, sb: supabaseClient });
     mountReportExport();
     if (!window.KoraReportExport) {
       document.addEventListener('kora-report-export-ready', mountReportExport, { once: true });
@@ -1195,6 +1200,19 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     version: KORA_VERSION,
   };
 
+  const resolvePortfolioBootstrap = (()=>{
+ const uuid=x=>typeof x==='string'&&/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(x);
+ const fail=()=>Error('No se pudo verificar el acceso de Cartera. Vuelve a iniciar sesión.');
+ function resolveBootstrap(response,user){
+  if(response?.error||!response?.data||Array.isArray(response.data)||typeof response.data!=='object')throw fail();
+  const d=response.data;if(d.restricted===false)return{restricted:false};
+  if(d.restricted!==true||!uuid(user)||d.profile?.id!==user||d.profile.rol!=='operador_cartera'||d.profile.activo!==true||typeof d.profile.nombre!=='string'||!(d.profile.tienda_codigo===null||typeof d.profile.tienda_codigo==='string')||d.read!==true||typeof d.manage!=='boolean'||d.importer!==false||d.authorizer!==false)throw fail();
+  return{restricted:true,read:true,manage:d.manage,importer:false,authorizer:false,profile:{id:user,nombre:d.profile.nombre,rol:'operador_cartera',activo:true,tienda_codigo:d.profile.tienda_codigo}};
+ }
+
+ return resolveBootstrap;
+  })();
+
   async function initialize() {
     const appEl = document.getElementById('app');
     if (!appEl) {
@@ -1237,9 +1255,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       markAuthenticated();
       const userId = sessionData.session.user.id;
       startBootStage('profile');
-      const { data: perfil } = await withBootTimeout(
+      const portfolioBoot = resolvePortfolioBootstrap(await withBootTimeout(sb.rpc('cartera_operador_inicio')), userId);
+      const profileResponse = portfolioBoot.restricted ? { data: portfolioBoot.profile } : await withBootTimeout(
         sb.from('perfiles').select('*').eq('id', userId).maybeSingle(),
       );
+      if (profileResponse.error) throw new Error('No se pudo comprobar el perfil.');
+      const perfil = profileResponse.data;
       if (!perfil || !perfil.activo) {
         finishRouteAccess(false);
         showAccessDenied();
@@ -1248,7 +1269,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const experience = window.KoraAccessControl.resolveExperience(perfil);
       completeBootStage('profile', { active: true, experience });
       let esAdminB2b = false;
-      if (typeof sb.rpc === 'function') {
+      if (experience !== 'portfolio' && typeof sb.rpc === 'function') {
         startBootStage('b2b-capability');
         const permisoB2b = await withBootTimeout(sb.rpc('es_admin_b2b'));
         esAdminB2b = permisoB2b?.error ? false : permisoB2b?.data === true;
@@ -1256,7 +1277,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       perfil.es_admin_b2b = esAdminB2b;
       completeBootStage('b2b-capability', { enabled: esAdminB2b });
       let esOperadorAliados = false;
-      if (typeof sb.rpc === 'function') {
+      if (experience !== 'portfolio' && typeof sb.rpc === 'function') {
         startBootStage('allies-capability');
         const permisoAliados = await withBootTimeout(sb.rpc('tiene_capacidad_aliados', { p_capacidad: 'revisor' }));
         esOperadorAliados = permisoAliados?.error ? false : permisoAliados?.data === true;
@@ -1264,9 +1285,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       perfil.es_operador_aliados = esOperadorAliados;
       completeBootStage('allies-capability', { enabled: esOperadorAliados });
 
-      let puedeLeerCartera = false;
-      let puedeGestionarCartera = false;
-      if (typeof sb.rpc === 'function') {
+      let puedeLeerCartera = portfolioBoot.restricted ? portfolioBoot.read : false;
+      let puedeGestionarCartera = portfolioBoot.restricted ? portfolioBoot.manage : false;
+      if (!portfolioBoot.restricted && typeof sb.rpc === 'function') {
         startBootStage('portfolio-capability');
         const [lecturaCartera, gestionCartera] = await Promise.all([
           withBootTimeout(sb.rpc('tiene_capacidad_cartera', { p_capacidad: 'read' })),
@@ -1289,13 +1310,23 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       };
       startBootStage('authorization');
       const authorization = window.KoraAccessControl.authorize(perfil, location.pathname, capabilities);
-      const pageClient = sharedPageClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      window.creditekSidebar = { perfil, tiendas: [], sb: pageClient, authorization };
+      let pageClient = sharedPageClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       if (!authorization.allowed) {
         finishRouteAccess(false, { profile: perfil, authorization });
         showAccessDenied();
         return;
       }
+      if (experience === 'portfolio') {
+        if (!window.KoraPortfolioClient) {
+          await withBootTimeout(new Promise((resolve,reject)=>{
+            const script=document.createElement('script');script.src='/creditek/erp/cartera-operador-client.js?v=1.0.0';
+            script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar la conexión restringida de Cartera.'));document.head.appendChild(script);
+          }));
+        }
+        if (!window.KoraPortfolioClient) throw new Error('No se pudo comprobar la conexión restringida de Cartera.');
+        pageClient = window.KoraPortfolioClient.create(pageClient, portfolioBoot);
+      }
+      window.creditekSidebar = { perfil, tiendas: [], sb: pageClient, authorization };
       completeBootStage('authorization', { allowed: true, experience: authorization.experience });
 
       if (authorization.route === 'app.html') {
@@ -1311,7 +1342,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
 
       startBootStage('stores');
-      const { data: tiendasData } = await withBootTimeout(
+      const { data: tiendasData } = experience === 'portfolio' ? { data: [] } : await withBootTimeout(
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
       );
       const codigosClientesB2B = new Set(['CK-12', 'CK-13', 'CK-14']);

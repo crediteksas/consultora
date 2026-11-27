@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Two exact migrations together in PostgreSQL 17.6, permissive and restricted defaults, fictional dependencies only. A pre-existing broad INSERT grant on events is intentionally preserved; column ACLs do not narrow it. Not a full production rebuild.",
+  "migration_sha256": {
+    "supabase/migrations/20261126012515_cobra_krediya_cut_history.sql": "33e8674a20415126c38431937b31317ad0b2a73c58449b1dc20419e53f5d813b",
+    "supabase/migrations/20261126013403_cobra_krediya_collection_operation_link.sql": "6f69b6a7f5e7f1026230267c7093563e79c3df259b39576d53e487932fc6d021"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "sha256": "53638242afbc6e51b1395d344ad05ee40d920e023a2a80b5dc5804c937cd78e9"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/upgrade-before.json",
+      "sha256": "4b77a30ec584f09fb800207449a35958845053466fb872c33f9e278c0df16e75"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/upgrade-after.json",
+      "sha256": "ecf48d73850364fdc3eac8df9a3f2ac2addbb02875f27aae82e69b8e52b781c3"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/upgrade-contract.json",
+      "sha256": "e5e26a972bd8b873c0f8b987dbebd163a924df75f32d5c85178a63977a2af3ed"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/upgrade-created.json",
+      "sha256": "dc1898c16a07eba6678a44e07d22a3c1e8f35e23ce70ea2540b68899c2c7a891"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/rebuild-before.json",
+      "sha256": "63dc0f6b150261e76ba6e2e764faaf1bd8bfb1562031ea5113dd2664e4945e09"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/rebuild-after.json",
+      "sha256": "73e3fb9c8a4992670e90d3a6672655dae0a401c5e287e3fc2502068f0e792923"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/rebuild-contract.json",
+      "sha256": "e5e26a972bd8b873c0f8b987dbebd163a924df75f32d5c85178a63977a2af3ed"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/rebuild-created.json",
+      "sha256": "dc1898c16a07eba6678a44e07d22a3c1e8f35e23ce70ea2540b68899c2c7a891"
+    }
+  },
+  "native_receipt": {
+    "path": "tests/fixtures/supabase-compat/cobra-krediya/native-receipt.json",
+    "sha256": "77db84f2b1d71b1bcaa434725ecda26d2b0e5d40425364c47b97e2d80b58c827"
+  }
+}

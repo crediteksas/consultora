@@ -1,0 +1,55 @@
+# Review: R6 dedicated Cartera session role, R5 label/documentation delta
+
+## Verdict: **APPROVED DESIGN PREPARATION**
+
+This approval covers the pinned R4 package plus this R5 delta, within the same bounded source/design scope. All previously open gates remain open and blocking.
+
+## F1 and F2 status
+
+| Item | Status | Basis |
+|---|---|---|
+| F1 Reload assertions | **Closed (rename).** | Both names now say "after NOTIFY; reload completion not verified". The condition is unchanged: status 200 with `sql_role`, and 403 with PT403 and the message. The names now claim only what the test shows. |
+| F2 Invalid-role assertions | **Closed (rename).** | The names now say "is rejected; fallback not distinguished". `status in (400,401,403)` does show rejection, and the name no longer claims no-fallback. |
+
+## Delta check
+
+- **Python diff.** It touches only the five `check(...)` name strings. The conditions, request paths, tokens, the `NOTIFY` SQL and the 0.5 s sleep are unchanged. This matches your preimage claim.
+- **Receipt.** All five renamed strings appear verbatim in the receipt. The total is still 60 assertions and 51 distinct names. The renames do not change the count, because the three invalid-role names remain distinct through `repr(wrong)`.
+- **PLAN.md paragraph.** It is accurate and scoped. It says:
+  - post-NOTIFY requests do not show that the reload completed, and no sentinel was observed;
+  - the invalid-role probes cannot distinguish fallback, because the endpoint also denies fallback roles;
+  - both properties remain pending gates;
+  - the kill-switch proof (42501 plus the role name) is kept as the separate no-fallback evidence;
+  - none of this becomes integration or provider approval.
+
+  It also qualifies the earlier line 92 sentence ("NOTIFY de recarga … se ensaya localmente") without contradicting it.
+
+## Gates now explicitly open (added by this delta)
+
+- **Reload completion.** Use a sentinel, or an equivalent observation that the cache actually reloaded, before relying on post-reload behavior.
+- **Invalid role claims without fallback.** Probe a route a fallback role would succeed on, and assert the specific role-assumption error.
+
+If a central gate register exists, I recommend listing these two there too, not only in the PLAN paragraph. This is not blocking.
+
+## Carried forward, unchanged
+
+- **N1–N6** remain non-blocking notes. N6 ("provider control … original role only") was not renamed, which is acceptable.
+- **`test_source_sha256`.** I still cannot verify the byte-exact hash. The in-script computation remains the correct provenance mechanism, and I accept your statement that the emitted SHA matches the file.
+
+## Not approved
+
+As before, this review does not approve:
+
+- the unwritten KORA integration delta;
+- installation or deployment;
+- real accounts, role assignment, sign-out or ban;
+- service-role key use;
+- Auth configuration;
+- changes to the pre-request or authenticator;
+- running the kill switch outside the fixture;
+- provider-owned ACLs or policies;
+- hosted Supabase, Storage, Realtime or GraphQL;
+- the two backends;
+- external limits;
+- the self-service email flow;
+- the downgraded-token/provider-control residual, which remains not accepted and blocking.

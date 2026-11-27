@@ -1,0 +1,9 @@
+{
+  "actual_code_only": true,
+  "sources": {
+    "candidate/catalog-query.sql": "9a419966e64591b1d34513cf5904a25486ccec8b7d564ed34b9545a5f2cd8023",
+    "candidate/cartera-coverage-gate.mjs": "a74a48d978c909544c3019351e59a8f0fe99c762869c1dd5d437ebf27c5ae2f2",
+    "candidate/cartera-managed-inventory.mjs": "51d9c9e4285d7fe9d702718ccafdd8639a5a5b75315d093f6523fe30ff0d220b",
+    "candidate/check-permission-contract.mjs": "7f8ba6ba063a559b0d7d71c0e9d81b01123ba4daf7235bea9bcc324e8555cefa"
+  }
+}

@@ -1,0 +1,36 @@
+# Source-only review: R6 migration timestamp/path realignment
+
+**Scope:** This review covers only the pasted diff, staged path list, rename summary, hash table and test tail. I ran nothing and inspected no files. The hashes, byte identity and test results are the primary agent's measurements, taken as given.
+
+## Verdict: approve, with four conditions
+
+The diff matches what it claims to be. It changes only paths and timestamps, the SQL bytes are unchanged, and nothing touches business logic. I can't settle the conditions below from source alone, so they need to be confirmed before merge or push.
+
+## What checks out in the diff
+
+- **SQL unchanged.** Both renames show 100% similarity. The sha256 values in `release.json` are the same before and after for both files, and they match the measured table and `migration-lineage.json`.
+- **Migration order preserved.** Provision review (`…020616`) still comes before dedicated session access (`…025816`), as it did with the old timestamps (`…154810` → `…011623`).
+- **References are consistent.** `emit-evidence.mjs`, `full-fixture.mjs` and `release.json` all point to the same two new paths. The other two migration entries in `release.json` didn't change.
+- **The pin chain makes sense.** The JSON keys changed, so `release.json` has new bytes. That explains the updated pin in `kora-permission-release.json`, and that is the only hunk in that file.
+- **The archive copies are inert.** They live under `releases/…/historical-migrations/`, outside `supabase/migrations/`, so the Supabase CLI won't apply them.
+- **Untracked and unstaged files are excluded as you said.** That covers the preview, `cobra-evolucion`, the manifest, `ESTADO-ACTUAL.md` and `release-status.json`. None of them appear in the staged list.
+
+## Conditions to confirm (I can't verify these)
+
+1. **The remote migration history must already use the new versions. This one blocks if wrong.** The rename is only correct if `supabase_migrations.schema_migrations` on every linked or remote database records `20261127020616` and `20261127025816`, for example because they were applied through a tool that assigned those versions.
+   - If any database recorded `20261126154810` or `20261127011623` instead, `supabase db push` will report history drift. A repair could then lead to the SQL running a second time.
+   - "Matches assigned migration versions" suggests the new versions are the recorded ones. A single query against `schema_migrations` would confirm it.
+2. **No other migration should sit in the window that opened.** Provision review moved from `20261126154810` to `20261127020616`.
+   - Any active migration timestamped between those two that depends on provision review objects would break `supabase db reset` or a rebuild.
+   - The fixture runs specific files in a fixed sequence rather than the whole directory in order, so the 21 passing tests wouldn't catch this.
+   - The untracked `releases/cobra-evolucion-20261126/` is worth a look here, in case it later adds a migration in that range.
+3. **Check that the pin was recomputed from the staged bytes and that a release-gate verifier passes.** The pin value `8f05c76d…` should be the sha256 of the staged `release.json` bytes. The Cartera tests passing doesn't prove the KORA permission-release gate checks out. Run whatever verifier checks `kora-permission-release.json` against its pinned files. It should also catch any other pinned artifact that might hash `full-fixture.mjs` or `emit-evidence.mjs`, both of which changed.
+4. **No active references to the old paths should remain.** Search for `20261126154810` and `20261127011623` outside the R1–R5 archives, `historical-migrations/` and `migration-lineage.json`.
+   - Likely places are `scripts/run-kora-local-tests.mjs`, the isolation test file, and any CI workflow.
+   - The session-access migration is not loaded by path anywhere in the `full-fixture.mjs` hunk. The passing suite suggests the fixture gets that path from `release.json`, but only if the suite actually runs `install=true`.
+
+## Minor note (not blocking)
+
+The pasted rename summary pairs old → new inside `supabase/migrations/`. The staged status instead shows old → `historical-migrations/` plus the new files as additions. Both descriptions are consistent with identical content, because git's rename detection picks arbitrarily between equal candidates, so nothing is wrong. Still, describe the change as "moved to the archive, re-added under the new versions" so the history isn't misread later.
+
+Once condition 1 is confirmed and conditions 2–4 come back clean, this is a one-sentence commit: *"Realign the R6 migration filenames to their assigned versions and archive the originals, with the SQL bytes unchanged."*

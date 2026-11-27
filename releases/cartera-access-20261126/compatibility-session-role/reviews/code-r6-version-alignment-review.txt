@@ -1,0 +1,29 @@
+I can't give the approval you asked for. My tool calls returned no visible output in this session, so none of the claims in your message are verified yet. Repo rule #4 says to check against the actual code before signing off, and I won't present unverified claims as reviewed.
+
+There's also a mismatch between your description and the git status snapshot from the start of this session:
+
+**Your message says:** two path changes plus immutable SQL lineage.
+
+**Git status shows more:**
+- `M config/kora-permission-release.json`
+- `M tests/fixtures/supabase-compat/cartera-access/release.json`
+- `M .../compatibility-session-role/release-status.json`
+- `M .../compatibility-session-role/ESTADO-ACTUAL.md`
+- `?? .../compatibility-session-role/historical-migrations/`
+- `?? releases/cartera-access-20261126/preview/` (unrelated to the renames)
+- `?? releases/cobra-evolucion-20261126/` (unrelated to the renames)
+- The two staged renames (`R`) of the migration files
+
+Some of these may just be the expected hash and path updates. But `preview/` and `cobra-evolucion-20261126/` don't belong in a commit that's supposed to be only about renames. Under rule #3, they should go in a separate commit or be left out.
+
+**What needs checking before approval** (I can run these if the output comes through, or you can paste the results):
+
+1. **SQL bytes are unchanged:** `git diff --cached -M100% --summary -- supabase/migrations`. Both entries should show `rename ... (100%)`. Also compare the `shasum -a 256` of the new files against `git show HEAD:<old path>`, and against the hashes in `migration-lineage.json` (`73ec3380…`, `71ca8e5b…`).
+2. **No stale references remain:** `git grep -n "20261126154810\|20261127011623"` should only match `migration-lineage.json`, `historical-migrations/`, and docs.
+3. **The other modified files only change paths and hashes:** `git diff config/kora-permission-release.json tests/fixtures/supabase-compat/cartera-access/release.json .../release-status.json`. If any hash changed, the evidence has to be regenerated from `emit-evidence.mjs`, not edited by hand.
+4. **The historical copies match:** `historical-migrations/*` should hash to the same values as the renamed files.
+5. **Syntax check:** `node --check` on `full-fixture.mjs` and `emit-evidence.mjs`. Ideally, also rerun the fixture or test runner so it reads the new paths.
+
+**On what you pasted:** the `.mjs` diffs are correct as path-only edits, and the lineage JSON is consistent with them. The rename-only approach is right. The renamed migrations must keep the timestamps the provider actually recorded, or `supabase db push` will see drift.
+
+Want me to retry the checks? If they pass, I'd commit only the renames, the two `.mjs` files, the lineage/historical files, and any hash/path-only JSON or doc updates. `preview/` and `cobra-evolucion-20261126/` would stay out. I won't publish anything until you confirm.

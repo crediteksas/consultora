@@ -1,0 +1,14 @@
+{
+  "input_sha256": "74a4d4c47bc7b04e79096f3696287ec8a8b4c140fa9d096ca393e2abbb9ddae1",
+  "staged_paths": [
+    "config/kora-permission-release.json",
+    "releases/cartera-access-20261126/compatibility-session-role/emit-evidence.mjs",
+    "releases/cartera-access-20261126/compatibility-session-role/full-fixture.mjs",
+    "releases/cartera-access-20261126/compatibility-session-role/historical-migrations/20261126154810_cobra_krediya_evolution_provision_review.sql",
+    "releases/cartera-access-20261126/compatibility-session-role/historical-migrations/20261127011623_cartera_dedicated_session_access.sql",
+    "releases/cartera-access-20261126/compatibility-session-role/migration-lineage.json",
+    "supabase/migrations/20261127020616_cobra_krediya_evolution_provision_review.sql",
+    "supabase/migrations/20261127025816_cartera_dedicated_session_access.sql",
+    "tests/fixtures/supabase-compat/cartera-access/release.json"
+  ]
+}

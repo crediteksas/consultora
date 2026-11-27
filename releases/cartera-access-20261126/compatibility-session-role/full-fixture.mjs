@@ -27,7 +27,7 @@ export async function fullSetup({install=true,bothOrigins=false}={}){
  for(const t of ['aliados_operadores','clientes','origenes','nova_authorizations','credit_repayments','credit_collection_events','credit_portfolio_obligations','credit_portfolio_settings','liquidation_operations','liquidations'])await db.exec(`alter table public.${t} enable row level security;grant select on public.${t} to authenticated;create policy baseline_read on public.${t} for select to authenticated using(true);`);
  await db.exec(file('supabase/migrations/20261126012515_cobra_krediya_cut_history.sql'));
  await db.exec(file('supabase/migrations/20261126013403_cobra_krediya_collection_operation_link.sql'));
- await db.exec(file('supabase/migrations/20261126154810_cobra_krediya_evolution_provision_review.sql'));
+ await db.exec(file('supabase/migrations/20261127020616_cobra_krediya_evolution_provision_review.sql'));
  const view=file('supabase/migrations/20260910200436_creditos_cartera_nova_ready.sql').split('create view public.creditos_cartera_operaciones')[1].split('revoke all on public.creditos_cartera_operaciones')[0];
  await db.exec('create view public.creditos_cartera_operaciones'+view);
  // Only fictional accounts, customers and operations. Two origins prove scope isolation.

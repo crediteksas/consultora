@@ -1,5 +1,5 @@
 {
-  "status": "approved-code-hosted-checks-pending",
+  "status": "backend-installed-frontend-pending",
   "general_tests": {
     "passed": 1765,
     "failed": 0
@@ -11,14 +11,15 @@
   ],
   "visual_cases": 4,
   "permission_gate_scenarios": 34,
-  "production_migrations_applied": 0,
+  "production_migrations_applied": 2,
   "production_deployed": false,
   "actual_account_role_changes": 0,
   "original_proposal_files_preserved": 190,
   "source_pins": {
-    "supabase/migrations/20261126154810_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
-    "supabase/migrations/20261127011623_cartera_dedicated_session_access.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
+    "supabase/migrations/20261127020616_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+    "supabase/migrations/20261127025816_cartera_dedicated_session_access.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
     "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-proof.mjs": "4b0b609315d1258b1130b4418ce32607b2f6a0fd4ba49b1c76be986902f06ec8",
     "releases/cartera-access-20261126/compatibility-session-role/hosted-profile-lifecycle.mjs": "6a7e918af13863670bef64abed4dfa8a116841a9e0a641a8daba30bbf649423a"
-  }
+  },
+  "hosted_ordinary_profiles_verified": 3
 }

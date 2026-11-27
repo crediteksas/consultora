@@ -5,8 +5,8 @@
   "migration_sha256": {
     "supabase/migrations/20261126012515_cobra_krediya_cut_history.sql": "33e8674a20415126c38431937b31317ad0b2a73c58449b1dc20419e53f5d813b",
     "supabase/migrations/20261126013403_cobra_krediya_collection_operation_link.sql": "6f69b6a7f5e7f1026230267c7093563e79c3df259b39576d53e487932fc6d021",
-    "supabase/migrations/20261126154810_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
-    "supabase/migrations/20261127011623_cartera_dedicated_session_access.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57"
+    "supabase/migrations/20261127020616_cobra_krediya_evolution_provision_review.sql": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+    "supabase/migrations/20261127025816_cartera_dedicated_session_access.sql": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57"
   },
   "isolation_tests": [
     {

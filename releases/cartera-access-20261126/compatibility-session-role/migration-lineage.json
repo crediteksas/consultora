@@ -1,0 +1,15 @@
+{
+  "no_sql_reapplied": true,
+  "migrations": {
+    "20261126154810_cobra_krediya_evolution_provision_review.sql": {
+      "current_path": "supabase/migrations/20261127020616_cobra_krediya_evolution_provision_review.sql",
+      "sha256": "73ec338000c5163a09a167552e4b359e7a69b17841d25c9d066bc47c9a6905c2",
+      "sql_bytes_unchanged": true
+    },
+    "20261127011623_cartera_dedicated_session_access.sql": {
+      "current_path": "supabase/migrations/20261127025816_cartera_dedicated_session_access.sql",
+      "sha256": "71ca8e5b9b59910168dddf749ac5a7340ee09362277d90014db5475ec99ecd57",
+      "sql_bytes_unchanged": true
+    }
+  }
+}

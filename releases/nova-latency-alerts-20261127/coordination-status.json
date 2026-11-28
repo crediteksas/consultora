@@ -9,9 +9,13 @@
   "filesMoved": false,
   "foreignFilesUntouched": true,
   "canonicalReserved": false,
-  "plannedCanonicalAction": "No canonical commit/deploy planned; isolated branch/worktree handles NOVA",
+  "plannedCanonicalAction": "None; isolated branch contains complete NOVA publication/evidence",
   "canPreserveTwoOwnReceiptsWhenInstructed": true,
   "doNotMoveNow": true,
   "noCurrentDeploy": true,
-  "isolatedWorktree": "/private/tmp/nova-latency-release-20261127"
+  "isolatedWorktree": "/private/tmp/nova-latency-release-20261127",
+  "deploymentComplete": true,
+  "futureCanonicalActionPlanned": false,
+  "isolatedCodeCommit": "b6d79caa",
+  "workerVersion": "b821ee46-175e-4910-90b8-67a4e1738b04"
 }

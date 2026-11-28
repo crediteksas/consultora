@@ -1,0 +1,23 @@
+{
+  "workerVersion": "b821ee46-175e-4910-90b8-67a4e1738b04",
+  "codeCommit": "b6d79caa",
+  "nativeVersion": "1.0.21",
+  "chromeObservedVersion": "1.0.21",
+  "extensionId": "chmllaginlechbjehafcpjmhbdoeoffp",
+  "chromeObservedStatus": "Conexi\u00f3n privada confirmada",
+  "nativeState": "idle",
+  "nativeActiveContext": false,
+  "nativeFilesHashesAndModesVerified": true,
+  "providerCounts": {
+    "pending_recent_jobs": 0,
+    "real_delay_notices": 0,
+    "provider_submissions": 0
+  },
+  "testsPassed": 97,
+  "realNewProviderTest": false,
+  "realNoticeDeliveryTest": false,
+  "alertsEnabled": true,
+  "alertActivation": "2026-11-28T02:14:28.342860Z",
+  "workerPostflight": "PASS",
+  "checkedAt": "2026-11-28T02:16:32.341672+00:00"
+}

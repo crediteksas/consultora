@@ -1,0 +1,6 @@
+
+ ⛅️ wrangler 4.114.0 (update available 4.169.0)
+───────────────────────────────────────────────
+Resource location: remote
+
+Writing the contents of /private/tmp/nova-latency-alerts-20261127/alert-config-enabled.json to the key "nova:platform-delay-alerts:v1" on namespace id: "6dd6041ec9244377887da25651b6fb84".

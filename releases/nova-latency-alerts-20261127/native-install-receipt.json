@@ -1,0 +1,28 @@
+{
+  "at": "2026-11-28T02:12:24.719906+00:00",
+  "version": "1.0.21",
+  "files": {
+    "node/engine.mjs": {
+      "before": "4b94c066c6a6d807da532555116097163e56d9b5077c7222f365e299bc4ec793",
+      "after": "117d08337d25f8afdfa894cbc2d2f8ceb0a798ac5f43070869a53213f80ff611",
+      "mode": 384
+    },
+    "node/client.mjs": {
+      "before": "a92ffb938e5146bcad2d12bf5998631d6cac054aca080a122d32232e506eb3c6",
+      "after": "cbd026e63323a7c89bbc07418a8bb7a4ee6f27feb0cd2076df36fe6a76e16fe2",
+      "mode": 384
+    },
+    "lib/krediya-browser-20261103/pilot-runner.mjs": {
+      "before": "2c2f36bde0613d5afad127484843e88cb37548de86cd8a1677dc599e6aebb046",
+      "after": "a39837a0faef1bd2a2afc30afe940e480e15a1420ac44af0a7d43cb3f428af9a",
+      "mode": 384
+    },
+    "extension/manifest.json": {
+      "before": "45b5bd74eca5b72b3443fd1365531014ac1fe7d2a52cbe17eb42dcb2e6ade1a3",
+      "after": "72340a85ca3e7eddd2546961366719e2f3702e14b86610e4b0a06bbc79d2754f",
+      "mode": 384
+    }
+  },
+  "stateBefore": "idle",
+  "backup": "/private/tmp/nova-latency-alerts-20261127/native-backup"
+}

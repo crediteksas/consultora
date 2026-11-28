@@ -1,0 +1,45 @@
+
+ ⛅️ wrangler 4.114.0 (update available 4.169.0)
+───────────────────────────────────────────────
+Total Upload: 3147.83 KiB / gzip: 730.30 KiB
+Worker Startup Time: 43 ms
+Your Worker has access to the following bindings:
+Binding                                                                                    Resource
+env.NOVA_KREDIYA_CHANNEL (KrediyaChannel)                                                  Durable Object
+env.NOVA_PILOT (NovaPilot)                                                                 Durable Object
+env.NOVA_EVENTS (6dd6041ec9244377887da25651b6fb84)                                         KV Namespace
+env.KORA_READONLY (f217b67017314da3a20e6015de53bb5e)                                       Hyperdrive Config
+env.KORA_REGISTRATION_SOURCE (creditek-clientes)                                           Worker
+env.NOVA_RETAIL_DATABASE (creditek-clientes#NovaRetailDatabaseGateway)                     Worker
+env.ENVIRONMENT ("production")                                                             Environment Variable
+env.NOVA_ALO_READ_ENABLED ("true")                                                         Environment Variable
+env.NOVA_KREDIYA_EXECUTOR_ENABLED ("false")                                                Environment Variable
+env.NOVA_KREDIYA_PROBE_UNTIL ("2026-09-17T05:20:32.614Z")                                  Environment Variable
+env.NOVA_KREDIYA_TRANSPORT_VERIFIED ("false")                                              Environment Variable
+env.NOVA_OUTBOUND_ENABLED ("false")                                                        Environment Variable
+env.NOVA_PAYJOY_READ_ENABLED ("true")                                                      Environment Variable
+env.NOVA_PHONE_NUMBER_ID ("1238316279371001")                                              Environment Variable
+env.NOVA_PILOT_ENABLED ("true")                                                            Environment Variable
+env.NOVA_PLATFORM_EXECUTION_ENABLED ("true")                                               Environment Variable
+env.NOVA_PLATFORM_RENEWAL_ENABLED ("true")                                                 Environment Variable
+env.NOVA_REFERENCES_ENABLED ("true")                                                       Environment Variable
+env.NOVA_REFERENCE_DELIVERY_ENABLED ("true")                                               Environment Variable
+env.NOVA_REFERENCE_INVITATIONS_APPROVED ("true")                                           Environment Variable
+env.NOVA_REFERENCE_OTP_ENABLED ("true")                                                    Environment Variable
+env.NOVA_REFERENCE_OTP_PREFLIGHT_UNTIL ("2026-09-18T22:37:17.579Z")                        Environment Variable
+env.NOVA_REFERENCE_OTP_STORAGE_READY ("true")                                              Environment Variable
+env.NOVA_REFERENCE_STORAGE_READY ("true")                                                  Environment Variable
+env.NOVA_REGISTRATION_ACCEPT_FROM ("2026-09-16T04:08:21.773Z")                             Environment Variable
+env.NOVA_REGISTRATION_INTAKE_ENABLED ("true")                                              Environment Variable
+env.NOVA_REGISTRATION_PILOT_ORIGINS ("CK-01,CK-02,CK-03,CK-04,CK-05,CK-06,C...")           Environment Variable
+env.NOVA_REGISTRATION_STATUS_ENABLED ("true")                                              Environment Variable
+env.NOVA_RETAIL_ENABLED ("true")                                                           Environment Variable
+env.NOVA_RETAIL_PREPARE_ENABLED ("true")                                                   Environment Variable
+env.NOVA_SUPERVISION_ENABLED ("true")                                                      Environment Variable
+env.NOVA_WABA_ID ("27206918652305029")                                                     Environment Variable
+env.SUPABASE_URL ("https://ditiwpndvmyuqcagupea.supabase...")                              Environment Variable
+
+Uploaded creditek-nova (3.80 sec)
+Deployed creditek-nova triggers (0.95 sec)
+  https://creditek-nova.comercial-853.workers.dev
+Current Version ID: b821ee46-175e-4910-90b8-67a4e1738b04

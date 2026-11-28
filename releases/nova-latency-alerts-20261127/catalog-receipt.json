@@ -1,0 +1,65 @@
+{
+  "migrationApplied": true,
+  "table": [
+    {
+      "rls_enabled": true,
+      "user_policies": 0,
+      "realtime_published": false,
+      "anon_access": false,
+      "authenticated_access": false,
+      "foreign_keys": 0
+    }
+  ],
+  "functions": [
+    {
+      "proname": "nova_platform_delay_candidates",
+      "security_definer": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "proname": "nova_platform_delay_claim",
+      "security_definer": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "proname": "nova_platform_delay_finish",
+      "security_definer": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "proname": "nova_platform_delay_status",
+      "security_definer": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "proname": "nova_platform_delay_suppress",
+      "security_definer": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "status": "PUBLISHED_VERIFIED",
+  "at": "2026-11-28T00:51:11.610154+00:00",
+  "implementationCommit": "97e3afc1",
+  "worker": "creditek-clientes",
+  "version": "835e1f28-72a4-40c8-bb1a-a4752bb1c01b",
+  "tests": {
+    "schedulingPassed": 18,
+    "schemaRegressionsPassed": 8,
+    "total": 26
+  },
+  "review": "Claude final closure APPROVED",
+  "activeNonterminalCadenceMs": [
+    5000,
+    5500
+  ],
+  "idleAfterMs": 600000,
+  "idleOrClosedCadenceMs": [
+    30000,
+    33000
+  ],
+  "transportErrorBackoffMaxMs": 33000,
+  "serverRetryAfterMaxMs": 300000,
+  "automaticAttemptCapRemoved": true,
+  "visibilityOfflineBFcacheRecoveryVerified": true,
+  "sessionExpiryAndPermanentErrorsStillStop": true,
+  "existingTabsNeedOneReload": true,
+  "backendAndOtherWorkersUnchanged": true,
+  "providerQueryAndCustomerDataChanges": false,
+  "verificationLimit": "Virtual-clock and fictional HTTP tests plus exact deployed-code/settings verification; no new real customer submission or provider consultation in this release."
+}

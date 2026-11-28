@@ -1,0 +1,11 @@
+# NOVA customer progress live refresh
+
+The customer tracking page previously changed from 5-second to 30-second polling after a minute, then stopped at 72 requests and hid tracking behind a manual refresh instruction. Healthy active visible tracking now remains at 5 seconds plus up to 10% jitter, without the attempt-count stop. A view idle for 10 minutes checks at 30 seconds; interaction restores immediate checking. Closed results retain the prior 30-second recheck to invalidate expired authorization.
+
+Hidden/offline views cancel timers; visibility/online/BFcache resume uses the same single timer and fetch-busy guard. Transport/408/429/5xx failures back off to 30 seconds and honor bounded Retry-After even on manual requests. Auth and permanent errors stop the loop and retain clear recovery messages. No authorization lifespan, backend schema, permissions, credit decisions, provider requests or staff portal interval changes.
+
+Deployment changes ONLY the clientes Worker embedded form and its identical external form module. The NOVA Worker is captured and guarded but never deployed. Tests use virtual clocks and fictional HTTP responses. Current intake is low; estimated 26 active customer tabs would cause at most about 312 status reads/min before response latency; duplicates are not coordinated across tabs. Idle views reduce to 2 reads/min and signed session expiry remains enforced. Existing finalize RPC returns before insert when receipt exists; no provider dispatch on status endpoint.
+
+Rollback: preserve current production settings, verify candidate hash still deployed, then deploy the exact baseline clientes modules from this release using the same config with main/base_dir redirected to baseline/clientes. Keep all existing variables, secrets, bindings, cron and routes. Verify both workers and settings afterward; never restore a prior database/customer/journal state. Prefer a tracked revert/recovery commit before rollback publication.
+
+Prior compatibility limitation: AbortSignal.timeout(15000) already exists in the baseline and requires a supported browser. This patch does not change browser requirements. Claude approved final closure after the BFcache busy-restore fix;18new scheduling tests plus8prior schema regressions pass.

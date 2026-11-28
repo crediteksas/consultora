@@ -1,0 +1,51 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+# REJECTED
+
+The design is sound and the evidence covers it well. I found two blocking problems and one compatibility risk that should be fixed or confirmed first. Each fix is small, so the re-review should be quick.
+
+## Blocking
+
+**B1. The automatic tick may count as user activity, and nothing shown rules it out.**
+The timer callback calls `refresh()` with no arguments. `consultarRecepcion` treats every call as manual unless it receives `{automatic:true}`. If `refresh` is bound directly to `consultarRecepcion`, every automatic tick resets `lastActivity` and `stopped`. The 10-minute idle slowdown would then never happen: an untouched visible tab keeps polling every 5 s with no upper limit, because the exhaustion branch is gone.
+The idle test probably used a stub `refresh`, so it would not catch a wrong binding.
+- **Fix:** bind `refresh: () => consultarRecepcion({automatic:true})`.
+- **Test:** add one integration test that goes through the real binding and asserts the 30 s cadence after 600 s with no input.
+
+**B2. A BFcache restore during an in-flight request permanently stops polling.**
+1. `pagehide` sets `stopped=true` while a request is running.
+2. On restore, `pageshow` calls `consultarRecepcion()`, but the busy guard returns early, so `before({manual:true})` never runs and `stopped` stays true.
+3. The original request's `finally` calls `after()`, and `schedule()` exits because `stopped` is true.
+4. `visibility()`, `activity()` and `online` can't revive it either, since they all go through `schedule()`.
+
+The only way out is a manual click, so the customer stops getting automatic updates. Your pagehide/BFcache test likely restored the page while idle.
+- **Fix:** add a `resume()` that sets `stopped=false` and `lastActivity=now()`. Call it at the start of the `pageshow` handler, before `consultarRecepcion()`, so the pending `after()` reschedules.
+- **Test:** cover the case where pagehide happens while busy.
+
+## Should fix (compatibility, blocking if new in this patch)
+
+**C1. `AbortSignal.timeout` is missing on older Safari (before 16).**
+On those browsers, `AbortSignal.timeout(15000)` throws inside `try` on every call. The error is treated as `temporarily_unavailable`, so the page backs off forever without ever sending a request and shows "volveremos a comprobarlo automáticamente" indefinitely. This matters on a customer mobile page.
+- **Fix:** if `AbortSignal.timeout` doesn't exist, fall back to an `AbortController` plus `setTimeout`.
+- If this line was already in the baseline, note it as an existing risk instead.
+
+## Non-blocking
+
+- **N1.** `novaReceiptBusy=true` is set before the `getElementById` and `button.style` lines, which are outside `try`. If the button is missing, the code throws, `finally` never runs, and busy stays true permanently. Moving those lines inside `try`, or setting busy just before `try`, makes this impossible.
+- **N2.** When `before()` returns false because of Retry-After, a manual click does nothing visible. That's acceptable, but a short "intenta en X s" message would help.
+- **N3.** In the `!r.ok||data.ok!==true` block, `if(r.status>=400||r.ok)` is always true in practice. The `throw Error('unavailable')` name is therefore misleading: a 200 with `ok:false` becomes a permanent `request_error` stop. Confirm that is intended, and if so rename the error or simplify the condition.
+- **N4. Likely existing behaviour, outside scope.** If `cargarInvitaciones()` or `renderRegistrationProgress()` throws after `received_by_nova`, the `catch` shows the generic failure text and hides the tracking element, even though the receipt succeeded. Polling still continues correctly with the received/complete status. Track this separately.
+- **N5.** `attempts` is never read and `exhausted:false` is a fixed value. That's fine if it is kept for compatibility, but say so in a comment.
+
+## Checks that passed
+
+- Retry-After parsing handles both forms, the 5-minute cap applies, and invalid values become 0.
+- Backoff runs 5, 10, 20, then 30 s. Jitter is added only to the delay and never cuts into Retry-After.
+- Hidden or offline tabs clear the timer, and `online` or becoming visible wakes it immediately. At most one timer exists at a time.
+- A wake that lands while a request is running is dropped safely by the busy guard, and the request's `finally` reschedules.
+- 401, 403, 404, other 4xx, and the expired-session 400 all stop polling. 408, 429, 5xx, network errors and timeouts back off and retry.
+- The status route has no write, insert or dispatch path, so the unbounded 30 s polling of a complete status is safe as described.
+
+To approve after the fixes, I need:
+- the B1 binding change with its integration test;
+- `resume()` on `pageshow` with the busy-restore test;
+- either the C1 fallback, or confirmation that the line was already in the baseline.

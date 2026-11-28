@@ -1,0 +1,26 @@
+✔ active view keeps 5s beyond100ticks and never exhausts (1.419333ms)
+✔ idle tab slows only after10min then interaction resumes immediately (0.092167ms)
+✔ transient errors backoff5/10/20/30 and reset only on success (0.082167ms)
+✔ retry deadline respected by manual and visibility/online wake (0.06675ms)
+✔ hidden or offline cancels and resume has one immediate fetch (0.103375ms)
+✔ pagehide stops and BFcache manual restore creates one timer (0.053083ms)
+✔ auth/permanent statuses stop auto retry (0.086416ms)
+✔ closed result remains at30sec; jitter stays0to10percent (0.076042ms)
+✔ RetryAfter seconds/date parse and cap300seconds (0.628125ms)
+✔ HTTP429 and503 honor RetryAfter even nonJSON response (10.29975ms)
+✔ HTTP401 malformed body and403 stop immediately (0.977541ms)
+✔ permanent4xx including bad400 stop with clear message (1.21425ms)
+✔ existing busy guard prevents duplicate fetches (0.278208ms)
+✔ only customer polling source changes; embedded form equals external (9.550833ms)
+✔ existing finalization returns before any insert for existing receipt (0.425667ms)
+✔ real refresh binding is automatic and does not reset idle clock (0.707708ms)
+✔ BFcache during in-flight fetch resumes before busy guard and finally reschedules (0.13675ms)
+✔ timeout API use predates this patch; no new runtime requirement (0.307208ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75.318625

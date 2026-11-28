@@ -1,0 +1,20 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+**APPROVED**
+
+The revised plan fixes what was wrong with the initial one:
+
+- **Scope:** Only the customer progress screen changes. The staff/store portal stays at 15s, so its expensive list and progress calls are not multiplied.
+- **Backend:** No backend changes. The route has no provider dispatch, and auth, session, schema and signing scopes are untouched.
+- **Load:** About 312 requests/min (5.2 rps) is a worst-case ceiling, against a real volume of a handful per day. The 10-minute idle step-down to 30s holds a forgotten tab to 2 requests/min. Dropping the 72-attempt hard stop is then reasonable, because unchanged session expiry ends any forgotten tab with a 401.
+- **Retries and errors:** Retryable codes, permanent codes and auth expiry are each handled clearly. Honoring Retry-After even on manual refresh prevents users from hammering through a throttle.
+- **Timer lifecycle:** It uses one timer and the existing busy guard. It has an exact visibility condition, and handles hidden, offline, pagehide and BFcache without creating duplicate timers.
+- **UI:** The exhaustion branch that hid the last validated result is gone, and pending corrections stay visible.
+- **Rollback and tests:** The rollback is scoped to the two modules and checked against the captured baseline. The tests cover each state, the 8 existing schema regressions are rerun, and review, test and commit/push all happen before deploy.
+
+None of these notes blocks approval, but cover them during implementation:
+
+1. **Idempotency of the polled call:** The route is a POST that runs "finalize/read". Add a test that repeated 5s polls after completion produce no extra writes, timestamps or audit rows.
+2. **Retry-After cap:** Limit very large or invalid Retry-After values (for example, at most 5 minutes), and treat a past or unparseable date as the normal backoff.
+3. **Duplicate tabs:** The load estimate assumes one tab per role, but nothing enforces it. That's fine at current volume; just note it in the rollout doc.
+4. **Polling after completion:** Confirm that continuing at 30s after completion is only for showing pending corrections. If nothing can change after completion, stop there.
+5. **Backoff reset:** Reset the backoff to 5s only after a successful response, not on any event, so you get one immediate fetch and no burst.

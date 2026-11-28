@@ -1,0 +1,16 @@
+✔ baseline customer progress reproduces schema failure (1.955583ms)
+✔ baseline management list reproduces nonexistent column (0.338542ms)
+✔ fixed progress returns specific family waiting and personal replacement with no platforms (0.872458ms)
+✔ fixed progress still requires both scope identifiers (0.075375ms)
+✔ fixed progress rejects ambiguous sources and failing database (0.292084ms)
+✔ authorized remains motivational and denied remains denied (0.325625ms)
+✔ management queries match real schema and preserve all scope/date filters (0.409667ms)
+✔ schema contract has no invented timestamp; updated_at stays selected (0.064334ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.992375

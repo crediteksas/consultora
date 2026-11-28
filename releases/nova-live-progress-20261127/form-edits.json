@@ -1,0 +1,38 @@
+[
+  {
+    "old": "// Bounded receipt refresh only; never submits a new registration or requests OTPs.\nfunction createReceiptPoll({refresh,isVisible,setTimer=setTimeout,clearTimer=clearTimeout,limit=72,delay=5000,slowAfter=12,slowDelay=30000}) {\n  let pending=false,attempts=0,timer=null,stopped=false,final=false;\n  const clear=()=>{if(timer!==null){clearTimer(timer);timer=null;}};\n  function schedule(immediate=false) {\n    clear();\n    if (stopped || !pending || attempts>=limit || !isVisible()) return;\n    timer=setTimer(()=>{timer=null;attempts++;void refresh();}, immediate ? 0 : final ? slowDelay : attempts<slowAfter ? delay : slowDelay);\n  }\n  return {\n    before({manual=false}={}) { clear(); if(manual){attempts=0;stopped=false;} },\n    after(status) { final=status==='complete';pending=['pending_sync','temporarily_unavailable','received_by_nova','complete'].includes(status); schedule(); },\n    visibility() { schedule(true); },\n    stop() { stopped=true;pending=false;clear(); },\n    state:()=>({pending,attempts,exhausted:attempts>=limit,scheduled:timer!==null})\n  };\n}\n",
+    "new": "// Live, visible receipt refresh only; never submits registration, OTP or provider queries.\nfunction receiptRetryAfter(value,now=Date.now()) {\n if(typeof value!=='string'||!value.trim())return 0;\n const n=/^\\d+(?:\\.\\d+)?$/.test(value.trim())?Number(value)*1000:Date.parse(value)-now;\n return Number.isFinite(n)&&n>0?Math.min(300000,n):0;\n}\nfunction createReceiptPoll({refresh,isVisible,setTimer=setTimeout,clearTimer=clearTimeout,now=Date.now,random=Math.random,delay=5000,slowDelay=30000,idleAfter=600000}) {\n let pending=false,attempts=0,timer=null,stopped=false,final=false,failures=0,notBefore=0,lastActivity=now();\n const clear=()=>{if(timer!==null){clearTimer(timer);timer=null;}};\n function schedule(immediate=false) {\n  clear();\n  if(stopped||!pending||!isVisible())return;\n  const nominal=final||now()-lastActivity>=idleAfter?slowDelay:failures?Math.min(slowDelay,delay*2**(failures-1)):delay;\n  const jitter=1+Math.min(1,Math.max(0,Number(random())||0))*.1;\n  const wait=Math.max(0,notBefore-now(),immediate?0:Math.round(nominal*jitter));\n  timer=setTimer(()=>{timer=null;if(stopped||!pending||!isVisible())return;attempts++;void refresh();},wait);\n }\n return {\n  before({manual=false}={}){clear();if(manual){lastActivity=now();stopped=false;}if(now()<notBefore){schedule(true);return false;}return true;},\n  after(status,{retryAfterMs=0}={}){final=status==='complete';pending=['pending_sync','temporarily_unavailable','received_by_nova','complete'].includes(status);if(status==='temporarily_unavailable'){failures=Math.min(4,failures+1);notBefore=Math.max(notBefore,now()+Math.min(300000,Math.max(0,Number(retryAfterMs)||0)));}else{failures=0;notBefore=0;}schedule();},\n  visibility(){if(isVisible()){lastActivity=now();schedule(true);}else clear();},\n  activity(){const idle=now()-lastActivity>=idleAfter;lastActivity=now();if(idle)schedule(true);},\n  stop(){stopped=true;pending=false;clear();},\n  resume(){stopped=false;lastActivity=now();},\n  // attempts/exhausted remain for existing visibility diagnostics; healthy polling has no attempt cap.\n  state:()=>({pending,attempts,exhausted:false,scheduled:timer!==null,failures,notBefore})\n };\n}\n"
+  },
+  {
+    "old": "if (event.persisted && documentosSession && document.getElementById('successScreen').classList.contains('show')) void consultarRecepcion();",
+    "new": "if (event.persisted && documentosSession && document.getElementById('successScreen').classList.contains('show')) {novaReceiptPoll.resume();void consultarRecepcion();}"
+  },
+  {
+    "old": "window.addEventListener('online',()=>novaReceiptPoll.visibility());",
+    "new": "window.addEventListener('online',()=>novaReceiptPoll.visibility());\nfor(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>novaReceiptPoll.activity(),{passive:true});"
+  },
+  {
+    "old": "if(novaReceiptBusy)return;novaReceiptBusy=true;\n  novaReceiptPoll.before({manual:options?.automatic!==true});",
+    "new": "if(novaReceiptBusy||!novaReceiptPoll.before({manual:options?.automatic!==true}))return;novaReceiptBusy=true;"
+  },
+  {
+    "old": "button.disabled=true;let receiptStatus='temporarily_unavailable';const priorText",
+    "new": "button.disabled=true;let receiptStatus='temporarily_unavailable',retryAfterMs=0;const priorText"
+  },
+  {
+    "old": "    const data = await r.json();\n    if(!r.ok||data.ok!==true){",
+    "new": "    retryAfterMs=receiptRetryAfter(r.headers.get('Retry-After'));\n    if(r.status===401){receiptStatus='auth_required';throw Error('auth_required');}\n    if(r.status===403||r.status===404){receiptStatus='access_denied';throw Error('access_denied');}\n    if(r.status===408||r.status===429||r.status>=500)throw Error('unavailable');\n    if(r.status>=400&&r.status!==400){receiptStatus='request_error';throw Error('request_error');}\n    let data;try{data=await r.json();}catch(error){if(r.status===400)receiptStatus='request_error';throw error;}\n    if(!r.ok||data.ok!==true){"
+  },
+  {
+    "old": "      throw Error('unavailable');\n    }\n    receiptStatus=data.nova_status;",
+    "new": "      if(r.status>=400||r.ok)receiptStatus='request_error';throw Error('unavailable');\n    }\n    receiptStatus=data.nova_status;"
+  },
+  {
+    "old": "':'No pudimos actualizar el estado en este momento. Conservamos tu registro y volveremos a comprobarlo automáticamente.';}",
+    "new": "':receiptStatus==='request_error'?'No pudimos comprobar esta solicitud. El equipo de Creditek debe revisar el acceso; conservamos tus datos y fotos.':'No pudimos actualizar el estado en este momento. Conservamos tu registro y volveremos a comprobarlo automáticamente.';}"
+  },
+  {
+    "old": "finally {button.disabled=false;button.textContent='Actualizar estado de mi solicitud';novaReceiptBusy=false;novaReceiptPoll.after(receiptStatus);const polling=novaReceiptPoll.state();if(polling.pending&&polling.exhausted){const previous=document.getElementById('novaTracking');if(previous)previous.hidden=true;renderProgressRecovery('temporarily_unavailable');label.textContent='Tu registro sigue guardado. Se pausó la actualización automática de esta pestaña; pulsa Actualizar estado de mi solicitud para ver el resultado actual.';}}",
+    "new": "finally {button.disabled=false;button.textContent='Actualizar estado de mi solicitud';novaReceiptBusy=false;novaReceiptPoll.after(receiptStatus,{retryAfterMs});}"
+  }
+]

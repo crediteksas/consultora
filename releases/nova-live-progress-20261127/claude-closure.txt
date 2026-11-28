@@ -1,0 +1,16 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+**APPROVED**
+
+**B1, closed.** The binding `refresh:()=>consultarRecepcion({automatic:true})` sends automatic refreshes through `before()` with `manual=false`. That means automatic polls never reset `lastActivity`, so idle time builds up and the poller drops to the 30s slow delay after 600s. Your virtual-clock test runs the exact binding against the real helper and shows this. The earlier report was an excerpt omission, not a code defect.
+
+**B2, closed.** `resume()` runs before the busy guard in `consultarRecepcion()`, so `stopped=false` is set whichever path follows:
+- **A request is still in flight:** its `finally → after(status)` sets `pending` from the response and reschedules. Previously `stopped` blocked this.
+- **No request in flight:** the normal call runs once, and its own `after()` sets up the schedule again.
+- **The in-flight request settles before `pageshow`:** `after()` finds `stopped=true` and does nothing. Then `pageshow` resumes and starts a single new fetch, because busy is clear by then.
+- **Duplicate timers:** none, because `schedule()` always calls `clear()` first.
+
+`resume()` doesn't restore `pending`, which is correct: the next `after()` decides it from the actual server status.
+
+**C1, accepted as is.** `AbortSignal.timeout(15000)` was already in the baseline, so this patch adds no new risk. The older-Safari gap is documented and belongs to another change.
+
+One non-blocking note: user activity or an `online` event arriving after `pagehide` correctly does nothing, because `stopped` blocks `schedule()`. Only `pageshow` restarts polling, as intended.

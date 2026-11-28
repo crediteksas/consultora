@@ -1,0 +1,2 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+You've hit your 5-hour limit · resets 9:40pm (America/Bogota)

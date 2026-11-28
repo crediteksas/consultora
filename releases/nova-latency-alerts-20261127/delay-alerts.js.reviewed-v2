@@ -1,0 +1,86 @@
+// Operational timing only. Never used by eligibility, fingerprints, or saved summaries.
+function novaDelayStartedAt(job,c){
+ if((job?.retail_batch_id||null)!==(c?.query_request_id||null))return NaN;
+ return Date.parse(c?.query_request_id?c.query_requested_at:job?.created_at);
+}
+function novaDelayContextValid({source:s,caseRow:c,receipt:r,jobs},at=Date.now()){
+ if(!s||!c||!r||s.solicitud_id!==c.source_id||r.source_application_id!==s.solicitud_id||s.revoked_at||s.generalConsentActive!==true||s.consent?.granted!==true||s.consent.revoked!==false||!validPlatformConsent2(s.consent.platform_queries,at)||['authorized','rejected'].includes(c.state)||c.delivered_at||!['waiting','review','correct'].includes(c.state))return false;
+ if(!Array.isArray(jobs)||jobs.length!==3||new Set(jobs.map(j=>j.platform)).size!==3)return false;
+ if(jobs.some(j=>!['ALO','KREDIYA','PAYJOY'].includes(j.platform)||j.source_application_id!==s.solicitud_id||j.application_id!==r.application_id||j.payload_hash!==r.payload_hash||(j.retail_batch_id||null)!==(c.query_request_id||null)||j.inputs!=null&&(j.inputs.document!==s.registration?.p_cedula||j.inputs.phone!==s.registration?.p_celular)||!validPlatformConsent2(j.consent,at)))return false;
+ return true;
+}
+function novaDelayedJobs(context,at=Date.now()){
+ if(!novaDelayContextValid(context,at))return [];
+ const {jobs,caseRow:c}=context;
+ return jobs.filter(j=>['queued','running','blocked'].includes(j.status)&&j.checked_at===null).map(j=>({...j,delayStartedAt:novaDelayStartedAt(j,c)})).filter(j=>Number.isFinite(j.delayStartedAt)&&j.delayStartedAt<=at-120000&&j.delayStartedAt>at-86400000);
+}
+function novaLiveDelays(context,at){
+ return novaDelayedJobs(context,at).map(j=>({platform:j.platform,elapsedSeconds:Math.floor((at-j.delayStartedAt)/1000)}));
+}
+function novaDelayContent(store,id,jobs,at){
+ if(typeof store!=='string'||!store.trim()||!UUID6.test(id)||!jobs.length)throw Error('DELAY_DETAILS_REQUIRED');
+ const clean=s=>s.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+ const reference=clean(store).slice(0,90)+' · NOVA-'+id.slice(0,8).toUpperCase();
+ const labels={ALO:'Aló',KREDIYA:'Krediya',PAYJOY:'PayJoy'};
+ const platforms=[...new Set(jobs.map(j=>j.platform))].map(p=>labels[p]).join(', ');
+ const minutes=Math.max(2,Math.floor(Math.max(...jobs.map(j=>at-j.delayStartedAt))/60000));
+ const text='Validación demorada: '+platforms+'; '+minutes+' min sin respuesta guardada. Revisa conexión y procesamiento del conector indicado en la ficha. Conserva los resultados recibidos; no registres de nuevo al cliente.';
+ return {reference,text,url:'https://aura.crediteksas.com/creditek/agentes/nova-supervision.html?solicitud='+id};
+}
+// Single isolated scan, bounded to 35s / 3 alerts. The kill switch is private KV.
+async function novaScanDelayAlerts(env,{db,rpc,source,fetcher,now,templateHealth,bounded}){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+ const ensure=()=>{if(controller.signal.aborted)throw Error('DELAY_SCAN_TIMEOUT');};
+ const read=async(project,path,opts={})=>{ensure();const v=await db(env,project,path,{...opts,signal:controller.signal});ensure();return v;};
+ const arpc=(name,body)=>read('aura','rpc/'+name,{method:'POST',body});
+ try{
+  if(env.NOVA_RETAIL_ENABLED!=='true')return;
+  const config=await env.NOVA_EVENTS?.get('nova:platform-delay-alerts:v1','json');ensure();
+  const activation=Date.parse(config?.activatedAt),at=now(),hour=new Date(at-18000000).getUTCHours();
+  if(config?.enabled!==true||!Number.isFinite(activation)||activation>at||hour<8||hour>=20)return;
+  const health=await templateHealth(env);ensure();if(health.staff!=='APPROVED'||health.staffContentVerified!==true||!Number.isFinite(health.checkedAt)||health.checkedAt>at||at-health.checkedAt>300000)return;
+  const people=await read('kora','nova_retail_reviewers?can_review=eq.true&select=recipient');
+  if(people.length!==1||!/^573\d{9}$/.test(people[0].recipient||''))return;
+  const recipient=people[0].recipient;
+  const stale=await read('aura','nova_platform_delay_alerts?state=eq.sending&attempted_at=lt.'+new Date(at-120000).toISOString()+'&select=id,attempt_id&limit=10');
+  for(const n of stale)await arpc('nova_platform_delay_finish',{p_id:n.id,p_attempt:n.attempt_id,p_state:'uncertain',p_message:null,p_error:'STALE_SEND_UNCONFIRMED'});
+  const pending=await arpc('nova_platform_delay_candidates',{p_activation:new Date(activation).toISOString()});
+  async function context(id){
+   // source() is the existing scope + effective-consent check, not a new auth path.
+   const s=await source(env,id,{signal:controller.signal});ensure();
+   const [cases,receipts]=await Promise.all([read('kora','nova_retail_cases?source_id=eq.'+id+'&select=*&limit=2'),read('aura','nova_registration_receipts?source_application_id=eq.'+id+'&select=source_application_id,application_id,payload_hash&limit=2')]);
+   if(cases.length!==1||receipts.length!==1)return null;
+   const jobs=await read('aura','nova_platform_jobs?application_id=eq.'+receipts[0].application_id+'&select=id,application_id,source_application_id,payload_hash,platform,status,checked_at,created_at,retail_batch_id,consent,inputs&limit=4');
+   return {source:s,caseRow:cases[0],receipt:receipts[0],jobs};
+  }
+  let count=0;
+  for(const candidate of pending.slice(0,10)){
+   const id=candidate.source_id;
+   const suppress=reason=>arpc('nova_platform_delay_suppress',{p_source:id,p_batch:candidate.batch_id||null,p_recipient:recipient,p_reason:reason});
+   ensure();if(count>=3)break;if(!UUID6.test(id||''))continue;
+   let claim=null;
+   try{
+    let c=await context(id);if(!c||!novaDelayContextValid(c,now())){await suppress('SOURCE_NOT_ELIGIBLE');continue;}
+    let jobs=novaDelayedJobs(c,now()).filter(j=>j.delayStartedAt>=activation&&new Date(j.delayStartedAt-18000000).getUTCHours()>=8&&new Date(j.delayStartedAt-18000000).getUTCHours()<20);if(!jobs.length){const young=c.jobs.some(j=>['queued','running','blocked'].includes(j.status)&&j.checked_at===null&&novaDelayStartedAt(j,c.caseRow)>now()-120000&&novaDelayStartedAt(j,c.caseRow)<=now());if(!young)await suppress('NO_CURRENT_SERVICE_DELAY');continue;}
+    const origins=await read('kora','origenes?codigo=eq.'+encodeURIComponent(c.caseRow.store_code)+'&select=codigo,nombre&limit=2');if(origins.length!==1)continue;
+    const args={p_source:id,p_batch:c.caseRow.query_request_id||null,p_started:new Date(Math.min(...jobs.map(j=>j.delayStartedAt))).toISOString(),p_recipient:recipient,p_jobs:jobs.map(j=>j.id)};
+    claim=await arpc('nova_platform_delay_claim',args);if(!claim)continue;count++;
+    // Re-read consent, current cycle and pending jobs after the atomic claim.
+    c=await context(id);jobs=c?novaDelayedJobs(c,now()).filter(j=>j.delayStartedAt>=activation&&new Date(j.delayStartedAt-18000000).getUTCHours()>=8&&new Date(j.delayStartedAt-18000000).getUTCHours()<20):[];
+    if(!jobs.length||(c.caseRow.query_request_id||null)!==(claim.batch_id||null)||!jobs.some(j=>claim.job_ids.includes(j.id))){await arpc('nova_platform_delay_finish',{p_id:claim.id,p_attempt:claim.attempt_id,p_state:'cancelled',p_message:null,p_error:'RESULT_OR_CONSENT_CHANGED'});continue;}
+    const content=novaDelayContent(origins[0].nombre,id,jobs.filter(j=>claim.job_ids.includes(j.id)),now());
+    // Kill switch is checked immediately before sending as well as at scan entry.
+    const enabled=await env.NOVA_EVENTS.get('nova:platform-delay-alerts:v1','json');ensure();
+    if(enabled?.enabled!==true){await arpc('nova_platform_delay_finish',{p_id:claim.id,p_attempt:claim.attempt_id,p_state:'cancelled',p_message:null,p_error:'SCANNER_DISABLED'});continue;}
+    let state='uncertain',message=null,error='SEND_UNCONFIRMED';
+    try{
+     const response=await fetcher('https://graph.facebook.com/v26.0/'+env.NOVA_PHONE_NUMBER_ID+'/messages',{method:'POST',redirect:'manual',headers:{authorization:'Bearer '+env.NOVA_META_ACCESS_TOKEN,'content-type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:recipient,type:'template',template:{name:'nova_aviso_ejecutivo_v1',language:{code:'es_CO'},components:[{type:'body',parameters:[{type:'text',text:content.reference},{type:'text',text:content.text}]},{type:'button',sub_type:'url',index:'0',parameters:[{type:'text',text:id}]}]}}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(8000)])});
+     const data=await bounded(response,8192);ensure();
+     if(response.ok&&typeof data.messages?.[0]?.id==='string'&&data.messages[0].id.length<=250){state='accepted';message=data.messages[0].id;error=null;}
+     else if(response.status>=400&&response.status<500){state='failed';error=String(data.error?.code||response.status);}
+    }catch{}
+    await arpc('nova_platform_delay_finish',{p_id:claim.id,p_attempt:claim.attempt_id,p_state:state,p_message:message,p_error:error});
+   }catch(error){if(!claim&&!controller.signal.aborted&&error?.message==='NOT_FOUND')await suppress('SOURCE_NOT_ELIGIBLE').catch(()=>{});console.warn(JSON.stringify({event:'platform_delay_notice_unconfirmed'}));}
+  }
+ }catch{console.warn(JSON.stringify({event:'platform_delay_scan_unavailable'}));}finally{clearTimeout(timer);}
+}

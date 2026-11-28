@@ -1,0 +1,46 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+# Verdict: APPROVED, with conditions
+
+The plan is approved only if the six blocking items below are added before publish. If any of them can't be met, treat the plan as REJECTED. The overall design is sound. The cloud lease is never extended, there are no new retry or send paths, decisions, consent and saved results stay unchanged, the alert table is service-role only, and alerts fail closed. The gaps are in specification detail, not in the approach.
+
+## Blocking conditions
+
+1. **Explicit grants (B).** Postgres gives `EXECUTE` on new functions to `PUBLIC` by default. Supabase default privileges also grant table and function access to `anon` and `authenticated`. The migration must explicitly run:
+   - `REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon, authenticated`, then `GRANT EXECUTE ... TO service_role`;
+   - `REVOKE ALL ON TABLE nova_platform_delay_alerts FROM PUBLIC, anon, authenticated`;
+   - RLS enabled with no policies.
+   Also confirm the table is not in the `supabase_realtime` publication. Ideally put it in a schema PostgREST doesn't expose. The post-migration test must check `has_function_privilege` and `has_table_privilege` as `anon` and `authenticated` and expect false.
+
+2. **Loop bound and clock skew (A).** Compute `deadline = min(start + 285s, lease_until - 15s)` once, when the job is bound, and never recompute it per iteration. `lease_until` is cloud time, but `now` is local time. Either measure skew against server time (for example from the lease response) and subtract it, or fail closed if the skew is above a set limit (for example 5s). Add a test where the inactivity deadline keeps moving forward with progress and confirm it can never pass the fixed loop deadline.
+
+3. **Alert timing uses the same rules as C (B).** The "120s since what" check must use the same helper as C: `job.created_at` for the initial batch, and `case.query_requested_at` for the current requery batch. Also define:
+   - the service window boundary (for example `[08:00, 20:00)` America/Bogota);
+   - what happens to delays that start outside service hours: suppress them, or send at most one per source+batch at 08:00. This must stay bounded so there is no morning flood and no historical backfill.
+
+4. **Alerts never lock or block jobs (B).** The claim RPC and the scan must read `jobs`, receipts and consent without row locks (no `FOR UPDATE` and no advisory locks on job or case rows). Only rows in the alert table may be locked. The alert worker must run separately from the job worker:
+   - its exceptions, timeouts and Meta errors must never reach job processing;
+   - give it a timeout shorter than the scheduled interval.
+   Add a test that runs the coordinator while the alert RPC is held open and confirms the coordinator is not delayed.
+
+5. **Kill switch and rollback (D).** Add:
+   - a config flag that disables the alert scanner without redeploying;
+   - a recorded rollback for the native engine/runner (the backup hash and the steps to restore 1.0.20 through the same extension id);
+   - the previous Worker version id for rollback.
+   Reload the extension only when the verified local state shows no job holding an active lease. Otherwise, record that the reload lands inside the existing lease and 60s recovery grace, and that it causes no resend.
+
+6. **Template fit (B).** Before relying on the existing approved staff template, confirm its variable count, order and category match the planned content: store, case reference, platforms, elapsed time, technical check and link. If the content doesn't fit the template's approved purpose, stop rather than reshaping it. The link must point to the authenticated staff case page, with no tokens or signed parameters in the URL.
+
+## Non-blocking concerns (should be handled)
+
+- **Commercial view (C):** remove platform names on the server before the commercial DTO is built, not only in the UI. Make sure `liveJobs` is never cached, persisted, or read by fingerprint, summary or decision code. Add a test that changes `liveJobs` and checks the fingerprint and decision are byte-identical.
+- **Customer progress embed (C):** name the FK explicitly in the embed hint (`source!<fk_name>(submitted_at)`) and select only `submitted_at`. Verify under the customer's RLS that the embed can't return other source rows or columns. Customer-facing text must stay neutral and never suggest approval.
+- **Webhook status order (B):** say how a `failed` status arriving after `sent` or `delivered` is handled. It should be recorded only, with no resend and no change to the monotonic delivered/read order. Unknown `providerMessageId` values, or ones whose recipient doesn't match, should be ignored without changing any state.
+- **Stale sending (B):** set the stale-`sending` threshold explicitly and make it longer than the worker timeout, so a send still in flight is never marked uncertain while it is running.
+- **Reviewer resolution (B):** zero or more than one authorized reviewer means no claim is made (or the claim is finished as definitive "no_recipient"), and nothing is sent. Add tests for both cases.
+- **Late result after the loop ends (A):** if a provider response arrives after the loop deadline but before the cloud lease expires, it must take the existing late or recovery path. Add a test confirming it neither resends nor uses up an extra attempt.
+
+## Answers to your two reviewer questions
+
+- **Can the internal alert store widen end-user data access?** No, provided condition 1 is enforced and tested.
+- **Can it fabricate an approved credit?** No. Nothing writes eligibility, case state or credit, and `liveJobs` stays out of decision inputs (see the commercial view concern).
+- **Do alerts fail closed and stay out of financial processing?** Yes, provided conditions 3 and 4 are added.

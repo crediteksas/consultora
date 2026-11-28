@@ -1,0 +1,17 @@
+{
+  "canonicalTurnActive": false,
+  "plannedTurn": "Only isolated NOVA worker/native release after Claude approval; no KORA app deployment",
+  "canonicalNewFiles": [],
+  "existingOwnPending": [
+    "releases/nova-alerts-today-20261126/postflight-receipt.json",
+    "releases/nova-overdue-rule-20261125/postflight-receipt.json"
+  ],
+  "filesMoved": false,
+  "foreignFilesUntouched": true,
+  "canonicalReserved": false,
+  "plannedCanonicalAction": "No canonical commit/deploy planned; isolated branch/worktree handles NOVA",
+  "canPreserveTwoOwnReceiptsWhenInstructed": true,
+  "doNotMoveNow": true,
+  "noCurrentDeploy": true,
+  "isolatedWorktree": "/private/tmp/nova-latency-release-20261127"
+}

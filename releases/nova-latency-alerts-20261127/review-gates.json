@@ -1,0 +1,16 @@
+{
+  "review": "claude-final-v2.txt",
+  "verdict": "APPROVED subject to two deploy gates",
+  "gates": {
+    "templatePreparationEnabled": true,
+    "cronEveryMinute": true,
+    "actualTemplateClockAdvanced": true,
+    "firstCheckedAt": 1795831692634,
+    "secondCheckedAt": 1795831752642,
+    "missingCaseReceiptRetriedWithoutSuppression": true,
+    "runtimeIntegrationAndHttpApiTestsPassed": true
+  },
+  "narrowFollowup": "Applied reviewer-requested missing-case alternative, same-day filter and requery ordering; tests passed. Extra closure attempt hit quota; it does not change the prior conditional verdict.",
+  "newProviderQueries": 0,
+  "realTestMessages": 0
+}

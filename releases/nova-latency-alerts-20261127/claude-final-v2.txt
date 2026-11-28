@@ -1,0 +1,35 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+# Verdict: APPROVED, subject to two deploy gates
+
+I reviewed only the supplied text and ran nothing. The test logs are taken as given.
+
+All three blocking issues are resolved:
+
+1. **Queue starvation is fixed.** The SQL now filters on activation, today's Bogota 08:00–20:00 window, the 24h limit and the 120s age for initial jobs. Results are newest first, and rows that will never be eligible are suppressed for their batch. The test with 12 old ineligible sources plus one eligible source covers the overnight pile-up.
+2. **The receipt FK is gone.** A catalog test proves no foreign key exists. `claim` checks the receipt with a plain SELECT and no lock, and receipt deletion and retention behave as before.
+3. **Real wiring is now tested.** `createRetailRuntime` runs with the real `prepareTemplates`/`templateHealth`, `bounded2`, `source`, `evidence`, the HTTP `progress` API and `scheduled`. Only the network is stubbed. The tests show `checkedAt` is a number, the response is parsed so the alert is recorded as `accepted` with its message id, `receipt` is defined, and the store payload has no `liveJobs` or platform names.
+
+## Deploy gates (config checks, not code changes)
+
+- **Template freshness in live.** Preflight must show `NOVA_RETAIL_PREPARE_ENABLED === "true"` in the live config, and that the template state's `checkedAt` updates at least every 5 minutes under the real cron. This means no internal throttle longer than 5 minutes. The runtime test calls `prepareTemplates` once at the same instant as the scan, so it can't detect either problem. If either check fails, the scanner silently sends nothing.
+- **Case rows exist before jobs turn 120s old.** Confirm that the `nova_retail_cases` row (KORA) and the receipt are written when the jobs are created, or at least within 120s. If either can arrive later, `if(!c||…) suppress('SOURCE_NOT_ELIGIBLE')` permanently suppresses the alert for that batch on what is really a temporary state. In that case, treat a missing case or receipt row like a failed read: `continue`, don't suppress.
+
+## Non-blocking (fix soon)
+
+- **Requeries that can never be claimed stay in the queue.** A requery started yesterday, still pending, with `updated_at` touched today:
+  - passes the SQL window, which uses `updated_at`;
+  - passes the JS filter, which checks only "within 24h", not "today";
+  - then gets `null` from `claim`, which requires `p_started` to be today.
+
+  It never gets suppressed and takes a slot every minute. The same thing happens when `claim` returns null for a reason that won't change, such as `data_consent_granted = false`. Fix: add the same-day check to the JS job filter so these get suppressed as `NO_CURRENT_SERVICE_DELAY`.
+- **Requeries sort last.** `order by min(j.created_at) desc` uses the original job creation time, so requery candidates go to the back even when the requery itself is new. When there's a backlog of more than 3 sends per minute, requery delays are handled last. Order by the same expression you use in the window filter.
+- **No throughput SLA.** At 3 sends per minute, a heavy outage delays alerts well beyond 120s. Document this in the runbook.
+- **Postflight:** confirm the table is not in `supabase_realtime`, as planned.
+
+The native engine changes look correct:
+- `continueConversation` now requires a finite deadline.
+- The clock is checked before the claim.
+- The deadline is checked before each read, each event and each send.
+- `lastSent` starts at 0.
+
+Webhook receipts use `waitUntil`, cancelled and suppressed notices are documented as final for their batch, and the store list is no longer hardcoded in the claim SQL.

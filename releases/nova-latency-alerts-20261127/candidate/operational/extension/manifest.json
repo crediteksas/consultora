@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Creditek · Krediya para NOVA",
+  "version": "1.0.21",
+  "minimum_chrome_version": "120",
+  "description": "Consulta estados de cuenta de Krediya para expedientes NOVA autorizados, con guardado y cierre confirmados.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx6YXaiIrLg9O+yTIZ19tWza9Y2ePDsGa69Vixhv2oOQq9CFvuUcuDLJl7Yz8iH/zPQ9cKtRw/6O+qkHs9vgtuqxXId+JRDJQT7+h9seCn2GT0Wp4FyXLV+zqBycwBZ7q9Ob8eOodKoiDsEyEK37LvzgSJxTQ2R7R9FsHPSkP6+TUMhwMeO1pTwEDGNdAG+DtiQNCY68lmVJqbIN68lILgtweZYiS3zZF0eGopcUuSQklIXvsJ7uA1OS+WdUkLXbGIehpFL4x2o3oSgQZe6qh6NPeFJHkIN1H51yza2UMnBfPZ5bX7qzotmdcWaKI+7j0tF3BVjbtK/lnzuBdwU34bQIDAQAB",
+  "permissions": [
+    "alarms",
+    "storage",
+    "scripting",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ],
+  "background": {
+    "service_worker": "background.mjs",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Krediya · NOVA",
+    "default_popup": "popup.html"
+  }
+}

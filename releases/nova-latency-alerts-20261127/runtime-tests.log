@@ -1,0 +1,11 @@
+✔ real template preparation/health, db parser, source, evidence and sender wire together through network-only stubs (24.574458ms)
+✔ real store progress HTTP API hides providers/liveJobs and performs no case write/upsert (4.730333ms)
+✔ actual scheduled handler continues coordination while alert RPC remains pending (0.463417ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.849333

@@ -1,0 +1,21 @@
+✔ expired held case resumes its real name, saves actual menu result and closes channel without greeting/doc replay (4.467916ms)
+✔ wrong visible document is refused before any sensitive send (0.153ms)
+✔ server recovery failure never sends or clears held context (0.15325ms)
+✔ expired exhausted budget has no automatic recovery (0.102916ms)
+✔ recently expired execution waits for original bounded operations to end (0.116041ms)
+✔ persisted recovery counter prevents repeating an uncertain live execution (0.123375ms)
+✔ outside service hours or too close to closing never renews (0.13425ms)
+✔ live second claim without durable expired-renewal proof never calls renewal (0.4435ms)
+✔ crash before RPC, reply lost, and persisted counter resume same renewed attempt without greeting or duplicate result (1.789709ms)
+✔ transient name recovery retries promptly within current lease without waiting for expiry or renewing (0.354375ms)
+✔ current-lease recovery has durable finite budget (0.08075ms)
+✔ missing held job fails closed with a review state rather than throwing (0.482792ms)
+✔ completed-channel cleanup clears retry counters before the next customer (0.131667ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.252125

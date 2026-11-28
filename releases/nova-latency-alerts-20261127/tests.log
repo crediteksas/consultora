@@ -1,0 +1,26 @@
+✔ idle deadline follows confirmed progress but fixed cloud deadline never moves (2.628083ms)
+✔ unverified, stale, skewed clocks and expired leases cannot gain extra execution time (0.1475ms)
+✔ missing or changed source/batch/consent/receipt and completed cases never invent delays (0.423625ms)
+✔ timing starts at initial job or current requery request, never job updated time (0.099542ms)
+✔ commercial output hides platform details; decisions/summaries do not change with live timing (0.705916ms)
+✔ operational notice fits approved utility body with authenticated direct URL and no client data (0.211208ms)
+✔ separate scan sends once with exact store/case/check and persists accepted receipt (7.746667ms)
+✔ kill switch, template mismatch, outside hours and ambiguous reviewers suppress sends (0.220833ms)
+✔ postclaim result or kill switch cancels, uncertain transport never becomes a retry (0.794ms)
+✔ held alert RPC does not delay normal scheduled coordination (0.781791ms)
+✔ SQL installs, locks only private notices, anon/authenticated cannot access table/functions (621.148542ms)
+✔ atomic duplicate claim, stale uncertainty, wrong attempt and delivery order do not resend (461.893958ms)
+✔ uncertain sending, expired consent, wrong receipt and exhausted definitive retries fail closed (1633.456167ms)
+✔ baseline eligibility and fingerprint inputs unchanged, liveJobs never saved (4.718084ms)
+✔ approved staff template validation is self-contained and enforces exact category, body and authenticated button (1.28975ms)
+✔ completed jobs may purge private inputs; immutable receipt binding still permits a pending technical alert (0.091583ms)
+✔ candidate queue excludes sent/uncertain and preserves a new pending source; microsecond DB start matches JS milliseconds (407.186041ms)
+✔ native client samples only server Date metadata and keeps private token in backend headers (5.503292ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3229.868125

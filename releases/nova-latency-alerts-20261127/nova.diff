@@ -1,0 +1,277 @@
+--- 
+
++++ 
+
+@@ -88,4 +88,10 @@
+
+   return result2;
+ }
++function validateStaffTemplate(template){
++ const wanted={ name: "nova_aviso_ejecutivo_v1", language: "es_CO", category: "UTILITY", components: [{ type: "BODY", text: "Hay una actualizaci\xF3n en una solicitud de tu tienda en NOVA.\nReferencia: {{1}}\nActualizaci\xF3n: {{2}}\nAbre la ficha para revisar los resultados y continuar la gesti\xF3n.", example: { body_text: [["NOVA-1234ABCD", "Resultados y referencias actualizados"]] } }, { type: "BUTTONS", buttons: [{ type: "URL", text: "Ver solicitud", url: "https://aura.crediteksas.com/creditek/agentes/nova-supervision.html?solicitud={{1}}", example: ["https://aura.crediteksas.com/creditek/agentes/nova-supervision.html?solicitud=11111111-1111-4111-8111-111111111111"] }] }] };
++ if(!template||template.name!==wanted.name||template.language!==wanted.language||template.category!==wanted.category||template.parameter_format!==undefined&&template.parameter_format!=='POSITIONAL'||template.components?.length!==2)return false;
++ const body=template.components[0],buttons=template.components[1];
++ return body?.type==='BODY'&&body.text===wanted.components[0].text&&buttons?.type==='BUTTONS'&&buttons.buttons?.length===1&&buttons.buttons[0].type==='URL'&&buttons.buttons[0].text===wanted.components[1].buttons[0].text&&buttons.buttons[0].url===wanted.components[1].buttons[0].url;
++}
+ async function prepareTemplates(env, fetcher = fetch, { now = Date.now } = {}) {
+   if (env.NOVA_RETAIL_PREPARE_ENABLED !== "true" || !env.NOVA_META_ACCESS_TOKEN || !env.NOVA_EVENTS) return;
+@@ -109,4 +115,5 @@
+
+       }
+       const template = matches[0];
++      if(kind==="staff")state.staffContentVerified=validateStaffTemplate(template);
+       state[kind] = version && !validateReferenceTemplate(template, version) ? "CONTENT_MISMATCH" : STATES.has(template.status) ? template.status : "UNAVAILABLE";
+     } catch {
+@@ -125,5 +132,5 @@
+
+   const state = await env.NOVA_EVENTS?.get(TEMPLATE_STATE_KEY, "json");
+   const selected = selectTemplate(state, now());
+-  return { version: "retail-reference-visual-v2", pilotActive: env.NOVA_RETAIL_ENABLED === "true", reference: selected ? "APPROVED" : state?.referenceV2 || "NOT_CHECKED", referenceV1: state?.referenceV1 || "NOT_CHECKED", referenceV2: state?.referenceV2 || "NOT_CHECKED", staff: state?.staff || "NOT_CHECKED", ready: !!selected && state?.staff === "APPROVED", checkedAt: state?.checkedAt || null, selectedReference: selected?.name || null, selectedVersion: selected?.version || null, headerReady: referenceHeaderReady(state, now()), headerUrl: selected?.version === "v2" ? PINNED_LOGO_URL : null, headerSha256: state?.headerSha256 || null, headerCheckedAt: state?.headerCheckedAt || null, referenceDiagnostic: state?.referenceV2Diagnostic || null, staffDiagnostic: state?.staffDiagnostic || null };
++  return { version: "retail-reference-visual-v2", pilotActive: env.NOVA_RETAIL_ENABLED === "true", reference: selected ? "APPROVED" : state?.referenceV2 || "NOT_CHECKED", referenceV1: state?.referenceV1 || "NOT_CHECKED", referenceV2: state?.referenceV2 || "NOT_CHECKED", staff: state?.staff || "NOT_CHECKED", ready: !!selected && state?.staff === "APPROVED", checkedAt: state?.checkedAt || null, selectedReference: selected?.name || null, selectedVersion: selected?.version || null, headerReady: referenceHeaderReady(state, now()), headerUrl: selected?.version === "v2" ? PINNED_LOGO_URL : null, headerSha256: state?.headerSha256 || null, headerCheckedAt: state?.headerCheckedAt || null, referenceDiagnostic: state?.referenceV2Diagnostic || null, staffContentVerified: state?.staffContentVerified===true, staffDiagnostic: state?.staffDiagnostic || null };
+ }
+ 
+@@ -77646,4 +77653,95 @@
+
+ }
+ 
++// Operational timing only. Never used by eligibility, fingerprints, or saved summaries.
++function novaDelayStartedAt(job,c){
++ if((job?.retail_batch_id||null)!==(c?.query_request_id||null))return NaN;
++ return Date.parse(c?.query_request_id?c.query_requested_at:job?.created_at);
++}
++function novaDelayContextValid({source:s,caseRow:c,receipt:r,jobs},at=Date.now()){
++ if(!s||!c||!r||s.solicitud_id!==c.source_id||r.source_application_id!==s.solicitud_id||s.revoked_at||s.generalConsentActive!==true||s.consent?.granted!==true||s.consent.revoked!==false||!validPlatformConsent2(s.consent.platform_queries,at)||['authorized','rejected'].includes(c.state)||c.delivered_at||!['waiting','review','correct'].includes(c.state))return false;
++ if(!Array.isArray(jobs)||jobs.length!==3||new Set(jobs.map(j=>j.platform)).size!==3)return false;
++ if(jobs.some(j=>!['ALO','KREDIYA','PAYJOY'].includes(j.platform)||j.source_application_id!==s.solicitud_id||j.application_id!==r.application_id||j.payload_hash!==r.payload_hash||(j.retail_batch_id||null)!==(c.query_request_id||null)||j.inputs!=null&&(j.inputs.document!==s.registration?.p_cedula||j.inputs.phone!==s.registration?.p_celular)||!validPlatformConsent2(j.consent,at)))return false;
++ return true;
++}
++function novaDelayedJobs(context,at=Date.now()){
++ if(!novaDelayContextValid(context,at))return [];
++ const {jobs,caseRow:c}=context;
++ return jobs.filter(j=>['queued','running','blocked'].includes(j.status)&&j.checked_at===null).map(j=>({...j,delayStartedAt:novaDelayStartedAt(j,c)})).filter(j=>Number.isFinite(j.delayStartedAt)&&j.delayStartedAt<=at-120000&&j.delayStartedAt>at-86400000);
++}
++function novaLiveDelays(context,at){
++ return novaDelayedJobs(context,at).map(j=>({platform:j.platform,elapsedSeconds:Math.floor((at-j.delayStartedAt)/1000)}));
++}
++function novaServiceDelay(j,activation,at){
++ const date=new Date(j.delayStartedAt-18000000),today=new Date(at-18000000).toISOString().slice(0,10);
++ return j.delayStartedAt>=activation&&date.toISOString().slice(0,10)===today&&date.getUTCHours()>=8&&date.getUTCHours()<20;
++}
++function novaDelayContent(store,id,jobs,at){
++ if(typeof store!=='string'||!store.trim()||!UUID6.test(id)||!jobs.length)throw Error('DELAY_DETAILS_REQUIRED');
++ const clean=s=>s.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
++ const reference=clean(store).slice(0,90)+' · NOVA-'+id.slice(0,8).toUpperCase();
++ const labels={ALO:'Aló',KREDIYA:'Krediya',PAYJOY:'PayJoy'};
++ const platforms=[...new Set(jobs.map(j=>j.platform))].map(p=>labels[p]).join(', ');
++ const minutes=Math.max(2,Math.floor(Math.max(...jobs.map(j=>at-j.delayStartedAt))/60000));
++ const text='Validación demorada: '+platforms+'; '+minutes+' min sin respuesta guardada. Revisa conexión y procesamiento del conector indicado en la ficha. Conserva los resultados recibidos; no registres de nuevo al cliente.';
++ return {reference,text,url:'https://aura.crediteksas.com/creditek/agentes/nova-supervision.html?solicitud='+id};
++}
++// Single isolated scan, bounded to 35s / 3 alerts. The kill switch is private KV.
++async function novaScanDelayAlerts(env,{db,rpc,source,fetcher,now,templateHealth,bounded}){
++ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
++ const ensure=()=>{if(controller.signal.aborted)throw Error('DELAY_SCAN_TIMEOUT');};
++ const read=async(project,path,opts={})=>{ensure();const v=await db(env,project,path,{...opts,signal:controller.signal});ensure();return v;};
++ const arpc=(name,body)=>read('aura','rpc/'+name,{method:'POST',body});
++ try{
++  if(env.NOVA_RETAIL_ENABLED!=='true')return;
++  const config=await env.NOVA_EVENTS?.get('nova:platform-delay-alerts:v1','json');ensure();
++  const activation=Date.parse(config?.activatedAt),at=now(),hour=new Date(at-18000000).getUTCHours();
++  if(config?.enabled!==true||!Number.isFinite(activation)||activation>at||hour<8||hour>=20)return;
++  const health=await templateHealth(env);ensure();if(health.staff!=='APPROVED'||health.staffContentVerified!==true||!Number.isFinite(health.checkedAt)||health.checkedAt>at||at-health.checkedAt>300000)return;
++  const people=await read('kora','nova_retail_reviewers?can_review=eq.true&select=recipient');
++  if(people.length!==1||!/^573\d{9}$/.test(people[0].recipient||''))return;
++  const recipient=people[0].recipient;
++  const stale=await read('aura','nova_platform_delay_alerts?state=eq.sending&attempted_at=lt.'+new Date(at-120000).toISOString()+'&select=id,attempt_id&limit=10');
++  for(const n of stale)await arpc('nova_platform_delay_finish',{p_id:n.id,p_attempt:n.attempt_id,p_state:'uncertain',p_message:null,p_error:'STALE_SEND_UNCONFIRMED'});
++  const pending=await arpc('nova_platform_delay_candidates',{p_activation:new Date(activation).toISOString()});
++  async function context(id){
++   // source() is the existing scope + effective-consent check, not a new auth path.
++   const s=await source(env,id,{signal:controller.signal});ensure();
++   const [cases,receipts]=await Promise.all([read('kora','nova_retail_cases?source_id=eq.'+id+'&select=*&limit=2'),read('aura','nova_registration_receipts?source_application_id=eq.'+id+'&select=source_application_id,application_id,payload_hash&limit=2')]);
++   if(cases.length!==1||receipts.length!==1)return null;
++   const jobs=await read('aura','nova_platform_jobs?application_id=eq.'+receipts[0].application_id+'&select=id,application_id,source_application_id,payload_hash,platform,status,checked_at,created_at,retail_batch_id,consent,inputs&limit=4');
++   return {source:s,caseRow:cases[0],receipt:receipts[0],jobs};
++  }
++  let count=0;
++  for(const candidate of pending.slice(0,10)){
++   const id=candidate.source_id;
++   const suppress=reason=>arpc('nova_platform_delay_suppress',{p_source:id,p_batch:candidate.batch_id||null,p_recipient:recipient,p_reason:reason});
++   ensure();if(count>=3)break;if(!UUID6.test(id||''))continue;
++   let claim=null;
++   try{
++    let c=await context(id);if(!c)continue;if(!novaDelayContextValid(c,now())){await suppress('SOURCE_NOT_ELIGIBLE');continue;}
++    let jobs=novaDelayedJobs(c,now()).filter(j=>novaServiceDelay(j,activation,now()));if(!jobs.length){const young=c.jobs.some(j=>['queued','running','blocked'].includes(j.status)&&j.checked_at===null&&novaDelayStartedAt(j,c.caseRow)>now()-120000&&novaDelayStartedAt(j,c.caseRow)<=now());if(!young)await suppress('NO_CURRENT_SERVICE_DELAY');continue;}
++    const origins=await read('kora','origenes?codigo=eq.'+encodeURIComponent(c.caseRow.store_code)+'&select=codigo,nombre&limit=2');if(origins.length!==1)continue;
++    const args={p_source:id,p_batch:c.caseRow.query_request_id||null,p_started:new Date(Math.min(...jobs.map(j=>j.delayStartedAt))).toISOString(),p_recipient:recipient,p_jobs:jobs.map(j=>j.id)};
++    claim=await arpc('nova_platform_delay_claim',args);if(!claim)continue;count++;
++    // Re-read consent, current cycle and pending jobs after the atomic claim.
++    c=await context(id);jobs=c?novaDelayedJobs(c,now()).filter(j=>novaServiceDelay(j,activation,now())):[];
++    if(!jobs.length||(c.caseRow.query_request_id||null)!==(claim.batch_id||null)||!jobs.some(j=>claim.job_ids.includes(j.id))){await arpc('nova_platform_delay_finish',{p_id:claim.id,p_attempt:claim.attempt_id,p_state:'cancelled',p_message:null,p_error:'RESULT_OR_CONSENT_CHANGED'});continue;}
++    const content=novaDelayContent(origins[0].nombre,id,jobs.filter(j=>claim.job_ids.includes(j.id)),now());
++    // Kill switch is checked immediately before sending as well as at scan entry.
++    const enabled=await env.NOVA_EVENTS.get('nova:platform-delay-alerts:v1','json');ensure();
++    if(enabled?.enabled!==true){await arpc('nova_platform_delay_finish',{p_id:claim.id,p_attempt:claim.attempt_id,p_state:'cancelled',p_message:null,p_error:'SCANNER_DISABLED'});continue;}
++    let state='uncertain',message=null,error='SEND_UNCONFIRMED';
++    try{
++     const response=await fetcher('https://graph.facebook.com/v26.0/'+env.NOVA_PHONE_NUMBER_ID+'/messages',{method:'POST',redirect:'manual',headers:{authorization:'Bearer '+env.NOVA_META_ACCESS_TOKEN,'content-type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:recipient,type:'template',template:{name:'nova_aviso_ejecutivo_v1',language:{code:'es_CO'},components:[{type:'body',parameters:[{type:'text',text:content.reference},{type:'text',text:content.text}]},{type:'button',sub_type:'url',index:'0',parameters:[{type:'text',text:id}]}]}}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(8000)])});
++     const data=await bounded(response,8192);ensure();
++     if(response.ok&&typeof data.messages?.[0]?.id==='string'&&data.messages[0].id.length<=250){state='accepted';message=data.messages[0].id;error=null;}
++     else if(response.status>=400&&response.status<500){state='failed';error=String(data.error?.code||response.status);}
++    }catch{}
++    await arpc('nova_platform_delay_finish',{p_id:claim.id,p_attempt:claim.attempt_id,p_state:state,p_message:message,p_error:error});
++   }catch(error){console.warn(JSON.stringify({event:'platform_delay_notice_unconfirmed'}));}
++  }
++ }catch{console.warn(JSON.stringify({event:'platform_delay_scan_unavailable'}));}finally{clearTimeout(timer);}
++}
++
+ function storeWorkflow(c,now=Date.now()){
+  const summary=c?.summary||{},validStates=['authorized','rejected','review','waiting','correct'];
+@@ -77681,7 +77779,12 @@
+
+    else{label=accountState.label;detail=accountState.detail;status=accountState.code==='insufficient_information'?'unavailable':'received';}
+   }
++  const delayed=(c?.liveJobs||[]).find(j=>j.platform===platform);
++  const hour=new Date(now-18000000).getUTCHours();
++  if(!['authorized','rejected'].includes(state)&&!c?.delivered_at&&delayed&&hour>=8&&hour<20&&['pending','running','technical'].includes(status)){
++   status='delayed';label='Validación demorada';detail='Lleva '+Math.max(2,Math.floor(delayed.elapsedSeconds/60))+' minutos sin respuesta guardada. El equipo NOVA debe revisar conexión y procesamiento del conector. No vuelvas a registrar al cliente.';
++  }
+   let owner=null;
+   if(['pending','running','outside_hours'].includes(status))owner='NOVA';
+-  if(['technical','unavailable','stale'].includes(status))owner='Equipo NOVA';
++  if(['technical','delayed','unavailable','stale'].includes(status))owner='Equipo NOVA';
+   if(status==='authorization')owner='Cliente';
+   const verification=c?.decision?.platformVerification?.find?.(v=>v.platform===platform);
+@@ -77747,5 +77850,7 @@
+
+  const closed=['authorized','rejected'].includes(state)||workflow.nextAction?.title==='Entrega registrada';
+  const pending=closed?[]:(workflow.pending||[]).filter(p=>['reference','photo'].includes(p.kind)).map(p=>({...p}));
++ const delayed=!closed&&(workflow.checks||[]).some(p=>p.status==='delayed');
+  const technical=!closed&&(workflow.checks||[]).some(p=>p.status==='technical');
++ if(delayed)pending.push({kind:'validation',label:'Validación demorada',owner:'Creditek',action:null,detail:'La validación está tardando más de dos minutos. El equipo de Creditek debe revisar el procesamiento. Conservamos los resultados recibidos; no vuelvas a registrar al cliente.'});
+  if(technical)pending.push({kind:'validation',label:'Validación técnica pendiente',owner:'Creditek',action:null,detail:'No se ha podido completar la verificación automática de NOVA. El equipo de Creditek debe restablecer el procesamiento. Conservamos tu solicitud; no vuelvas a registrarla.'});
+  const internalReview=!closed&&(workflow.pending||[]).some(p=>p.kind==='platform');
+@@ -77756,4 +77861,5 @@
+
+   {owner:state==='correct'?'Tienda':'Creditek',title:'No puedes continuar por ahora',detail:'Revisa los pendientes y el responsable indicado abajo. Espera a que NOVA muestre «Puedes continuar»; no registres al cliente de nuevo.'};
+  if(technical)Object.assign(action,{owner:'Creditek',title:'Validación técnica pendiente',detail:'La validación está detenida por un problema técnico de NOVA. No hay que volver a registrar al cliente. Revisa los pendientes específicos y su responsable abajo.'});
++ if(delayed&&!technical)Object.assign(action,{owner:'Creditek',title:'Validación demorada',detail:'La validación está tardando más de dos minutos. Conservamos tu solicitud. Creditek debe revisar el procesamiento; no tienes que registrarla de nuevo.'});
+  if(workflow.nextAction?.title==='Entrega registrada')Object.assign(action,{title:'Entrega registrada',detail:'La entrega ya quedó registrada.'});
+  const waiting=!closed?referenceWaitingNotice(references):null;
+@@ -77916,12 +78022,12 @@
+
+   }
+   __name(bounded2, "bounded");
+-  async function db(env, project, path, { method = "GET", body, prefer } = {}) {
++  async function db(env, project, path, { method = "GET", body, prefer, signal } = {}) {
+     const key4 = project === "kora" ? env.KORA_SUPABASE_SERVICE_ROLE_KEY : env.SUPABASE_SERVICE_ROLE_KEY;
+     let r;
+     if (project === "kora" && env.NOVA_RETAIL_DATABASE?.fetch) {
+-      r = await env.NOVA_RETAIL_DATABASE.fetch(new Request("https://registration.internal/internal/retail-db", { method: "POST", headers: { authorization: "Bearer " + env.NOVA_REGISTRATION_INTAKE_TOKEN, "content-type": "application/json" }, body: JSON.stringify({ path, method, body, prefer }), signal: AbortSignal.timeout(12e3) }));
++      r = await env.NOVA_RETAIL_DATABASE.fetch(new Request("https://registration.internal/internal/retail-db", { method: "POST", headers: { authorization: "Bearer " + env.NOVA_REGISTRATION_INTAKE_TOKEN, "content-type": "application/json" }, body: JSON.stringify({ path, method, body, prefer }), signal: signal?AbortSignal.any([signal,AbortSignal.timeout(12e3)]):AbortSignal.timeout(12e3) }));
+     } else {
+       if (!key4) throw Error("DATABASE_NOT_CONFIGURED");
+-      r = await fetcher((project === "kora" ? KORA3 : AURA5) + "/rest/v1/" + path, { method, headers: { ...headers(key4), ...prefer ? { Prefer: prefer } : {} }, body: body === void 0 ? void 0 : JSON.stringify(body), redirect: "manual", signal: AbortSignal.timeout(1e4) });
++      r = await fetcher((project === "kora" ? KORA3 : AURA5) + "/rest/v1/" + path, { method, headers: { ...headers(key4), ...prefer ? { Prefer: prefer } : {} }, body: body === void 0 ? void 0 : JSON.stringify(body), redirect: "manual", signal: signal?AbortSignal.any([signal,AbortSignal.timeout(1e4)]):AbortSignal.timeout(1e4) });
+     }
+     if (!r.ok) {
+@@ -77943,5 +78049,5 @@
+
+   }
+   __name(db, "db");
+-  const rpc = /* @__PURE__ */ __name((env, name, args) => db(env, "kora", "rpc/" + name, { method: "POST", body: args }), "rpc");
++  const rpc = /* @__PURE__ */ __name((env, name, args, options={}) => db(env, "kora", "rpc/" + name, { method: "POST", body: args, ...options }), "rpc");
+ 
+   function alliedPhoneAccess(env) {
+@@ -78023,9 +78129,9 @@
+
+   }
+   __name(assertScope, "assertScope");
+-  async function source(env, id) {
+-    const rows = await db(env, "kora", "kora_nova_sources?solicitud_id=eq." + id + "&select=*&limit=1");
++  async function source(env, id, {signal}={}) {
++    const rows = await db(env, "kora", "kora_nova_sources?solicitud_id=eq." + id + "&select=*&limit=1",{signal});
+     if (rows.length !== 1 || !novaStoreEnabled(env, rows[0].registration?.p_origen_codigo)) throw Error("NOT_FOUND");
+-    const effective = await rpc(env, "kora_nova_effective_references", { p_source: id });
+-    const generalConsentActive = await rpc(env, "nova_retail_consent_current", { p_source: id });
++    const effective = await rpc(env, "kora_nova_effective_references", { p_source: id },{signal});
++    const generalConsentActive = await rpc(env, "nova_retail_consent_current", { p_source: id },{signal});
+     if (typeof generalConsentActive !== "boolean") throw Error("CONSENT_STATE_UNAVAILABLE");
+     return { ...rows[0], effectiveReferences: effective, generalConsentActive };
+@@ -78043,5 +78149,5 @@
+
+ 
+     const [jobs, refs, dialogs, deliveries] = app ? await Promise.all([
+-      db(env, "aura", "nova_platform_jobs?application_id=eq." + app + "&select=id,application_id,source_application_id,payload_hash,platform,status,attempts,observation,reason_code,checked_at,updated_at,consent,inputs,retail_batch_id"),
++      db(env, "aura", "nova_platform_jobs?application_id=eq." + app + "&select=id,application_id,source_application_id,payload_hash,platform,status,attempts,observation,reason_code,checked_at,created_at,updated_at,consent,inputs,retail_batch_id"),
+       db(env, "aura", "nova_reference_verifications?superseded_at=is.null&application_id=eq." + app + "&select=id,reference_type,contact_hash,consent_status,verification_status"),
+       db(env, "aura", "nova_reference_dialogues?application_id=eq." + app + "&select=reference_id,state,status,outcome,updated_at"),
+@@ -78051,5 +78157,5 @@
+
+     if(recoverQueries&&app&&s.generalConsentActive===true&&recoveryBatch&&!jobs.some(j=>j.retail_batch_id===recoveryBatch)){
+       await db(env,'aura','rpc/nova_retail_requery',{method:'POST',body:{p_source:id,p_request:recoveryBatch}});
+-      jobs.push(...await db(env,'aura','nova_platform_jobs?application_id=eq.'+app+'&select=id,application_id,source_application_id,payload_hash,platform,status,attempts,observation,reason_code,checked_at,updated_at,consent,inputs,retail_batch_id'));
++      jobs.push(...await db(env,'aura','nova_platform_jobs?application_id=eq.'+app+'&select=id,application_id,source_application_id,payload_hash,platform,status,attempts,observation,reason_code,checked_at,created_at,updated_at,consent,inputs,retail_batch_id'));
+     }
+ 
+@@ -78101,5 +78207,5 @@
+
+     const summary = { name: reg.p_nombre_completo, storeCode: reg.p_origen_codigo, photos: TYPES.map((t) => ({ type: t, ...photos[t] })), references: referenceEvidence.map((r) => ({ id: r.id, type: r.type, status: referenceProgress2(r, now()).state, name: r.name, reportedRelationship: r.reportedRelationship, knowsCustomer: r.knowsCustomer ?? null, contactConfirmed: r.contactConfirmed, responded: r.responded, deliveredAt: r.deliveredAt })), platforms: jobs.map((j,i) => ({ platform: j.platform, status: j.status, attempts: j.attempts, checkedAt: j.checked_at, fresh: Number.isFinite(Date.parse(j.checked_at)) && now() - Date.parse(j.checked_at) < 864e5, reason: j.reason_code, observation: j.observation, validated: observations[i].resultReceived })), deliveryRequested: forDelivery, queriesMadeForDelivery: queryAttempted };
+     const fingerprint = await sha(JSON.stringify({ source: s.input_hash, revoked: s.revoked_at, ...(s.generalConsentActive === true ? {} : { generalConsentActive: false }), photoHashes: quality?.hashes, photoResults: quality?.results, documents: documents.map((d) => ({ type: d.tipo, hash: d.sha256 })).sort((a, b) => a.type.localeCompare(b.type)), summary, decision, queryRequestedAt: existing?.query_requested_at || null, renewedAt: existing?.renewed_at || null, policy: POLICY_VERSION }));
+-    return { decision, summary, fingerprint, documents, referenceEvidence, jobs };
++    return { decision, summary, fingerprint, documents, referenceEvidence, jobs, receipt:receipts[0] };
+   }
+   __name(evidence, "evidence");
+@@ -78220,5 +78326,5 @@
+
+   }
+   __name(sendNotices, "sendNotices");
+-  async function statuses(request, env) {
++  async function statuses(request, env, ctx) {
+     if (env.NOVA_RETAIL_ENABLED !== "true") return;
+     const raw = await readText(request, 262144);
+@@ -78240,4 +78346,5 @@
+
+           if (at > now() + 6e4) continue;
+           await db(env, "aura", "rpc/nova_retail_reference_status", { method: "POST", body: { p_message_id: s.id, p_contact_hash: await sha(env.NOVA_PII_HASH_PEPPER + ":" + s.recipient_id.slice(2)), p_status: s.status, p_at: new Date(at).toISOString(), p_error: Number.isSafeInteger(s.errors?.[0]?.code) ? s.errors[0].code : null } });
++          const delayReceipt=db(env,'aura','rpc/nova_platform_delay_status',{method:'POST',body:{p_message:s.id,p_recipient:s.recipient_id,p_status:s.status,p_at:new Date(at).toISOString(),p_error:s.errors?.[0]?.code?String(s.errors[0].code):null}}).catch(()=>console.warn(JSON.stringify({event:'platform_delay_receipt_unavailable'})));if(ctx?.waitUntil)ctx.waitUntil(delayReceipt);else await delayReceipt;
+           const notices = await db(env, "kora", "nova_retail_notifications?provider_message_id=eq." + encodeURIComponent(s.id) + "&recipient=eq." + s.recipient_id + "&select=id,state&limit=1");
+           const n = notices[0];
+@@ -78351,4 +78458,5 @@
+
+           : c;
+         const fresh2 = withReferenceDiagnostics({ ...official, summary: e.summary }, e.referenceEvidence, now());
++        fresh2.liveJobs=novaLiveDelays({source:s,caseRow:official,receipt:e.receipt,jobs:e.jobs},now());
+         assertScope(actor, fresh2);
+         if (b.action === "progress") {
+@@ -78425,5 +78533,6 @@
+
+   }
+   __name(api, "api");
+-  return { api, phoneLogin, reconcile, reconcileOne, authenticate, evidence, db, rpc, sendReferences, sendNotices, statuses, repairReplacements };
++  const sendDelayAlerts=env=>novaScanDelayAlerts(env,{db,rpc,source,fetcher,now,templateHealth,bounded:bounded2});
++  return { api, phoneLogin, reconcile, reconcileOne, authenticate, evidence, db, rpc, sendReferences, sendNotices, statuses, repairReplacements, sendDelayAlerts };
+ }
+ __name(createRetailRuntime, "createRetailRuntime");
+@@ -78452,5 +78561,5 @@
+
+     if (response.ok && this.env.NOVA_RETAIL_ENABLED === "true") {
+       try {
+-        await retail.statuses(copy, this.env);
++        await retail.statuses(copy, this.env, this.ctx);
+       } catch {
+         return new Response("Delivery receipt pending", { status: 503 });
+@@ -78481,5 +78590,5 @@
+
+     if (u.pathname === "/pilot/webhook" && copy) {
+       try {
+-        await retail.statuses(copy, env);
++        await retail.statuses(copy, env, ctx);
+       } catch {
+         return new Response("Delivery receipt pending", { status: 503 });
+@@ -78500,4 +78609,5 @@
+
+   return response;
+ }, async scheduled(event, env, ctx) {
++  ctx.waitUntil(retail.sendDelayAlerts(env));
+   await prepareTemplates(env);
+   await checkpoint(env);

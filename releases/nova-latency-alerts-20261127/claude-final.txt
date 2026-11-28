@@ -1,0 +1,63 @@
+Warning: this sign-in ends between 2026-12-04 and 2026-12-07 (in 6 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.
+# Verdict: REJECTED
+
+Most of the prior conditions are now met. Grants and RLS are in place, the loop deadline is computed once with skew handling, the timing helper is shared, the kill switch and rollback exist, and the template is validated exactly. Three issues still block. Two of them make the feature silently fail during the exact outage it exists for. The third breaks condition 4 as written.
+
+I reviewed only the supplied text and ran nothing. The test logs are taken as given.
+
+## Blocking issues
+
+**1. Old ineligible jobs can permanently fill the candidate queue.**
+`nova_platform_delay_candidates` returns any source with a `queued`, `running` or `blocked` job, `checked_at` null and a start after activation. It sorts oldest first and returns at most 10. Only sources that already have an alert row are excluded.
+
+Many pending jobs are rejected in JS without ever getting an alert row, so they come back on every scan:
+- jobs started outside service hours or on a previous day;
+- jobs older than 24h;
+- closed or delivered cases;
+- revoked or expired consent;
+- stores that `source()` rejects;
+- receipt or job-count mismatches;
+- `blocked` jobs that stay blocked forever (e.g. `BROWSER_SEND_NOT_CONFIRMED`).
+
+During a connector outage these pile up overnight. They take all 10 slots, and today's real delays never get scanned. The code comment says this starvation is prevented, but the test only covers sources that already have alert rows.
+
+Fix: apply the same window in SQL (job start within today's Bogota `[08:00,20:00)`, at or after activation, at least 120s ago, within 24h). Also either write a terminal `suppressed` row per source and batch, or exclude these rows and order newest first. Add a test with 10 or more ineligible pending sources plus one eligible source, and confirm the eligible one is claimed.
+
+**2. The foreign key on receipts locks receipt rows.**
+`source_id ... references nova_registration_receipts(source_application_id)` has two effects:
+- Each alert insert takes a `FOR KEY SHARE` lock on the receipt row. Condition 4 said no locks on receipts, and the test regex can't see an implicit FK lock.
+- Any existing delete, retention or erasure path that removes a receipt (or changes its key) will now fail with an FK violation once an alert references it.
+
+Fix: drop the FK. `claim` already checks that the receipt exists. Alternatively, justify keeping it with `ON DELETE CASCADE` and show that no existing flow locks or deletes receipts.
+
+**3. The real wiring is never exercised; only mocks are tested.**
+Every scanner test replaces `templateHealth`, `bounded`, `db` and `source`. Three real dependencies are unverified, and each can disable the feature or break existing flows:
+- **Template health format.** The scanner requires `Number.isFinite(health.checkedAt)` and a check within the last 5 minutes. If the real `templateHealth` returns an ISO string, or `prepareTemplates` runs less often than every 5 minutes or is gated by `NOVA_RETAIL_PREPARE_ENABLED`, no alert is ever sent.
+- **Response parsing.** If `bounded2` returns text instead of parsed JSON, every send is recorded as `uncertain`. It is never marked `accepted`, and webhooks never match it.
+- **`receipts[0]` in `evidence()`.** It must be a defined variable in that scope. If it isn't, every case view throws.
+
+Fix: add one test, using fictional data, that builds the real `createRetailRuntime` and calls the real `sendDelayAlerts`, `templateHealth`, `bounded2` and `evidence`, with fetch stubbed only at the network boundary.
+
+## Non-blocking issues (should be fixed)
+
+- **Store-facing API payload:** `fresh2.liveJobs` is attached in `api()`. The tests check `commercialStoreWorkflow` output and compare code slices, but not the HTTP payload a store user receives or any PATCH/upsert built from `fresh2`. An unknown `liveJobs` column in a write would make PostgREST reject it and break `progress`. Add an API-level test.
+- **Deadline robustness in the native engine:**
+  - Make `end` required in `continueConversation` (throw if it isn't finite). Confirm every call site passes it, including `recoverExpiredGreeting`.
+  - Confirm `lastSent` is always a number. If it is `undefined`, `Math.max` returns `NaN` and the 210s inactivity check never fires.
+  - Check `end` before each `receive` and send inside the events loop.
+- **Clock check comes after the claim:** the skew check runs after `claim()`, so a failure leaves a leased job stuck in review as `OPERATION_UNCERTAIN`. Run the check on the `status`/`peek` sample before claiming.
+- **Webhook latency:** every webhook status now waits on an extra AURA RPC (up to 10s) before the existing notice handling runs. Move it into `waitUntil` or give it a short timeout.
+- **Shared Worker limits:** the scan and the coordinator share the scheduled invocation's subrequest and CPU limits. Worst case is roughly 100 subrequests per scan. Confirm the plan's limits.
+- **Weak scheduling test:** the "held RPC does not delay coordination" test uses a fake `scheduled` plus a string match, not the real handler.
+- **Privilege test coverage:** it checks only `claim`. Add `finish`, `status` and `candidates`, plus a positive `service_role` check. Postflight should confirm the table is not in `supabase_realtime`.
+- **Burned cycles:** a `cancelled` claim (result changed, or kill switch) uses up that source and batch for good. A later delay on another platform in the same cycle will never alert. Document this as intended.
+- **Hardcoded store list:** the store allowlist in `claim` SQL is separate from `novaStoreEnabled` and will drift. Derive it from config or remove it.
+- **`AbortSignal.any` support:** confirm the Worker's compatibility date supports it. If not, the scanner fails closed, but silently.
+
+## Prior conditions that are now satisfied
+
+Grants and RLS (condition 1), the loop bound and skew handling (2), timing rules and the service window (3, apart from starvation), the kill switch and rollback (5), and the exact template check with a token-free URL (6) are all satisfied.
+
+These are also handled correctly: monotonic webhook status order, no resend on a late `failed`, ignoring unknown or mismatched message ids, the 120s stale-send threshold (longer than 35s plus 8s), and exactly one reviewer required.
+
+Fix blocking items 1–3, and add the API payload test if it's cheap. Then this can be approved.
